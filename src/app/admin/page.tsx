@@ -1073,6 +1073,75 @@ export default function AdminPage() {
           </DialogHeader>
 
           <div className="space-y-4">
+            {/* 格式说明卡片 */}
+            <div className="rounded-lg border p-4 space-y-3" style={{ borderColor: '#E8E3DD', backgroundColor: '#FAF8F5' }}>
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-semibold" style={{ color: '#3D3630' }}>Excel 格式规范</h4>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs border-[#C8956C] text-[#C8956C] hover:bg-[#FDF5ED]"
+                  onClick={() => {
+                    const wb = XLSX.utils.book_new();
+                    const wsData = [
+                      ['XX公司', '', ''],
+                      ['', '', ''],
+                      ['', '', ''],
+                      ['', '', ''],
+                      ['序号', '部门', '岗位名称'],
+                      ['1', '办公室', '主任'],
+                      ['2', '办公室', '副主任'],
+                      ['3', '财务部', '经理'],
+                      ['4', '财务部', '会计'],
+                      ['5', '人力资源部', '经理'],
+                      ['6', '人力资源部', '专员'],
+                      ['7', '市场部', '经理'],
+                      ['8', '市场部', '主管'],
+                      ['', '', ''],
+                      ['', '', ''],
+                      ['XX中心', '', ''],
+                      ['', '', ''],
+                      ['', '', ''],
+                      ['', '', ''],
+                      ['序号', '部门', '岗位名称'],
+                      ['1', '技术部', '总监'],
+                      ['2', '技术部', '工程师'],
+                      ['3', '运营部', '经理'],
+                    ];
+                    const ws = XLSX.utils.aoa_to_sheet(wsData);
+                    ws['!cols'] = [{ wch: 8 }, { wch: 18 }, { wch: 16 }];
+                    XLSX.utils.book_append_sheet(wb, ws, 'XX公司');
+                    XLSX.writeFile(wb, '岗位数据导入模板.xlsx');
+                  }}
+                >
+                  <Download className="h-3 w-3 mr-1" />
+                  下载模板
+                </Button>
+              </div>
+              <div className="grid grid-cols-1 gap-1.5 text-xs" style={{ color: '#6B6560' }}>
+                <div className="flex items-start gap-2">
+                  <span className="font-mono text-[#C8956C] whitespace-nowrap">第1行A列</span>
+                  <span>填写公司/中心名称（如：XX公司、XX中心），系统自动识读</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="font-mono text-[#C8956C] whitespace-nowrap">第2-4行</span>
+                  <span>可留空或填写备注信息（系统自动跳过）</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="font-mono text-[#C8956C] whitespace-nowrap">第5行</span>
+                  <span>列标题行（A列：序号、B列：部门、C列：岗位名称）</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="font-mono text-[#C8956C] whitespace-nowrap">第6行起</span>
+                  <span>逐行填写岗位数据，<strong>C列岗位名称必填</strong></span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="font-mono text-[#C8956C] whitespace-nowrap">多公司</span>
+                  <span>不同公司放在不同工作表（Sheet）中，每个 Sheet 格式同上</span>
+                </div>
+              </div>
+            </div>
+
             <input
               ref={fileInputRef}
               type="file"

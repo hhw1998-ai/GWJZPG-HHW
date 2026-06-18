@@ -955,7 +955,7 @@ export default function AdminPage() {
                   </div>
                 </div>
 
-                {importResult.errors.length > 0 && (
+                {importResult.errors && importResult.errors.length > 0 && (
                   <div className="border rounded-lg overflow-hidden" style={{ borderColor: '#F0D0D0' }}>
                     <div className="px-3 py-2 flex items-center justify-between" style={{ backgroundColor: '#FFF0F0' }}>
                       <span className="text-sm font-medium" style={{ color: '#CC5555' }}>

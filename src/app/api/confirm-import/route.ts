@@ -124,15 +124,19 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const response: ImportResponse = {
+    const response = {
       success: importedCount > 0,
       message: errors.length > 0
         ? `成功导入 ${importedCount} 个岗位，跳过 ${skippedCount} 行，失败 ${errors.length} 个`
         : `成功导入 ${importedCount} 个岗位，跳过 ${skippedCount} 行`,
-      importedCount,
-      skippedCount,
-      errorCount: errors.length,
-      errors: errors.length > 0 ? errors : undefined,
+      created: importedCount,
+      skipped: skippedCount,
+      errors: errors.map(e => ({
+        rowIndex: 0,
+        companyName: e.companyName,
+        errorType: 'IMPORT_ERROR',
+        message: `${e.positionName}: ${e.error}`,
+      })),
     };
 
     return NextResponse.json(response);

@@ -33,7 +33,7 @@ export default function RootLayout({
 
   return (
     <html lang="zh-CN" suppressHydrationWarning>
-      <head>
+      <head suppressHydrationWarning>
         <link rel="preconnect" href="https://fonts.googleapis.cn" />
         <link rel="preconnect" href="https://fonts.gstatic.cn" crossOrigin="anonymous" />
         <link

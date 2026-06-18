@@ -35,6 +35,22 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-brand-muted: var(--brand-muted);
+  --color-warm-50: var(--warm-50);
+  --color-warm-100: var(--warm-100);
+  --color-warm-200: var(--warm-200);
+  --color-warm-300: var(--warm-300);
+  --color-warm-400: var(--warm-400);
+  --color-warm-500: var(--warm-500);
+  --color-warm-600: var(--warm-600);
+  --color-warm-700: var(--warm-700);
+  --color-warm-800: var(--warm-800);
+  --color-warm-900: var(--warm-900);
+  --color-amber-400: var(--amber-400);
+  --color-amber-500: var(--amber-500);
+  --color-amber-600: var(--amber-600);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -47,80 +63,108 @@
     system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
     'Helvetica Neue', Arial, sans-serif;
   --font-mono:
-    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
-    'Courier New', monospace;
+    'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    'Liberation Mono', 'Courier New', monospace;
   --font-serif:
-    'Noto Serif SC', 'Songti SC', 'SimSun', ui-serif, Georgia, Cambria,
-    'Times New Roman', Times, serif;
+    'DM Serif Display', 'Noto Serif SC', 'Songti SC', ui-serif, Georgia,
+    Cambria, 'Times New Roman', Times, serif;
 }
 
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+
+  /* 品牌色：深胡桃棕 */
+  --brand: #3D3630;
+  --brand-foreground: #FAF8F5;
+  --brand-muted: #F0EDE8;
+
+  /* 暖灰系 */
+  --warm-50: #FAF8F5;
+  --warm-100: #F5F1EC;
+  --warm-200: #E8E3DD;
+  --warm-300: #D4CDC5;
+  --warm-400: #8B8580;
+  --warm-500: #6B6560;
+  --warm-600: #4A4540;
+  --warm-700: #3D3630;
+  --warm-800: #2C2825;
+  --warm-900: #1A1715;
+
+  /* 琥珀金 */
+  --amber-400: #D4A574;
+  --amber-500: #C8956C;
+  --amber-600: #B07D58;
+
+  /* shadcn 映射 */
+  --background: #FAF8F5;
+  --foreground: #2C2825;
+  --card: #FFFFFF;
+  --card-foreground: #2C2825;
+  --popover: #FFFFFF;
+  --popover-foreground: #2C2825;
+  --primary: #3D3630;
+  --primary-foreground: #FAF8F5;
+  --secondary: #F5F1EC;
+  --secondary-foreground: #3D3630;
+  --muted: #F5F1EC;
+  --muted-foreground: #8B8580;
+  --accent: #F0EDE8;
+  --accent-foreground: #3D3630;
+  --destructive: #C84C4C;
+  --border: #E8E3DD;
+  --input: #E8E3DD;
+  --ring: #C8956C;
+
+  /* 图表色 */
+  --chart-1: #C8956C;
+  --chart-2: #5B8C5A;
+  --chart-3: #3D3630;
+  --chart-4: #D4954B;
+  --chart-5: #8B8580;
+
+  /* 侧边栏 */
+  --sidebar: #FAF8F5;
+  --sidebar-foreground: #2C2825;
+  --sidebar-primary: #3D3630;
+  --sidebar-primary-foreground: #FAF8F5;
+  --sidebar-accent: #F0EDE8;
+  --sidebar-accent-foreground: #3D3630;
+  --sidebar-border: #E8E3DD;
+  --sidebar-ring: #C8956C;
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --background: #1A1715;
+  --foreground: #E8E3DD;
+  --card: #2C2825;
+  --card-foreground: #E8E3DD;
+  --popover: #2C2825;
+  --popover-foreground: #E8E3DD;
+  --primary: #C8956C;
+  --primary-foreground: #1A1715;
+  --secondary: #2C2825;
+  --secondary-foreground: #E8E3DD;
+  --muted: #2C2825;
+  --muted-foreground: #8B8580;
+  --accent: #3D3630;
+  --accent-foreground: #E8E3DD;
+  --destructive: #C84C4C;
+  --border: #3D3630;
+  --input: #3D3630;
+  --ring: #C8956C;
+  --chart-1: #C8956C;
+  --chart-2: #5B8C5A;
+  --chart-3: #D4A574;
+  --chart-4: #D4954B;
+  --chart-5: #8B8580;
+  --sidebar: #1A1715;
+  --sidebar-foreground: #E8E3DD;
+  --sidebar-primary: #C8956C;
+  --sidebar-primary-foreground: #1A1715;
+  --sidebar-accent: #2C2825;
+  --sidebar-accent-foreground: #E8E3DD;
+  --sidebar-border: #3D3630;
+  --sidebar-ring: #C8956C;
 }
 
 @layer base {
@@ -128,10 +172,63 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
   }
 }
 
 body {
   @apply font-sans;
+}
+
+/* 自定义动画 */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes count-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.5s ease-out forwards;
+}
+
+.animate-count-up {
+  animation: count-up 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* 滚动条美化 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #D4CDC5;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #8B8580;
 }

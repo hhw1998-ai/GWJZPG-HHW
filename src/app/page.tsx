@@ -1,134 +1,327 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Users, ChevronRight, QrCode } from 'lucide-react';
+import Link from 'next/link';
+import {
+  ArrowRight,
+  Upload,
+  Edit3,
+  BarChart3,
+  Shield,
+  FileSpreadsheet,
+  Users,
+  TrendingUp,
+  ChevronRight,
+  CheckCircle2,
+  Star,
+} from 'lucide-react';
 
-export default function Home() {
+export default function LandingPage() {
   const router = useRouter();
   const [evaluatorName, setEvaluatorName] = useState('');
-  const [positionCount, setPositionCount] = useState(0);
-
-  // 加载岗位数量
-  useEffect(() => {
-    const loadPositionCount = async () => {
-      try {
-        const response = await fetch('/api/positions');
-        const result = await response.json();
-        if (result.data) {
-          setPositionCount(result.data.length);
-        }
-      } catch (error) {
-        console.error('加载岗位数量失败:', error);
-      }
-    };
-    loadPositionCount();
-  }, []);
+  const [isStarting, setIsStarting] = useState(false);
 
   const handleStartEvaluation = () => {
-    if (!evaluatorName.trim()) {
-      alert('请填写评估人姓名');
-      return;
-    }
-
-    // 存储评估人姓名
+    if (!evaluatorName.trim()) return;
+    setIsStarting(true);
     localStorage.setItem('evaluator_name', evaluatorName.trim());
-
-    // 跳转到评分页面
     router.push('/evaluation');
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
-      <div className="w-full max-w-2xl space-y-6">
-        {/* 标题 */}
-        <div className="text-center space-y-2">
-          <h1 className="text-4xl font-bold text-gray-900 dark:text-white">
-            岗位价值评估系统
+    <div className="min-h-screen bg-[#FAF8F5]">
+      {/* ====== Navbar ====== */}
+      <nav className="sticky top-0 z-50 border-b border-[#E8E3DD] bg-[#FAF8F5]/90 backdrop-blur-md">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#3D3630]">
+              <BarChart3 className="h-5 w-5 text-[#FAF8F5]" />
+            </div>
+            <span className="font-serif text-xl font-semibold tracking-tight text-[#3D3630]">
+              岗位价值评估
+            </span>
+          </div>
+          <div className="flex items-center gap-6">
+            <a href="#features" className="text-sm text-[#8B8580] transition-colors hover:text-[#3D3630]">
+              功能介绍
+            </a>
+            <a href="#workflow" className="text-sm text-[#8B8580] transition-colors hover:text-[#3D3630]">
+              使用流程
+            </a>
+            <Link
+              href="/admin"
+              className="rounded-lg border border-[#E8E3DD] px-4 py-2 text-sm font-medium text-[#6B6560] transition-all hover:border-[#C8956C] hover:text-[#C8956C]"
+            >
+              管理后台
+            </Link>
+          </div>
+        </div>
+      </nav>
+
+      {/* ====== Hero ====== */}
+      <section className="relative overflow-hidden px-6 pb-20 pt-24">
+        {/* 背景装饰 */}
+        <div className="absolute inset-0 -z-10">
+          <div className="absolute -left-40 top-20 h-[600px] w-[600px] rounded-full bg-[#F0EDE8] opacity-60 blur-3xl" />
+          <div className="absolute -right-20 bottom-0 h-[400px] w-[400px] rounded-full bg-[#F5F1EC] opacity-50 blur-3xl" />
+        </div>
+
+        <div className="mx-auto max-w-4xl text-center">
+          {/* 标签 */}
+          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#E8E3DD] bg-white px-4 py-1.5">
+            <Star className="h-3.5 w-3.5 text-[#C8956C]" fill="#C8956C" />
+            <span className="text-xs font-medium text-[#8B8580]">专业岗位价值评估工具</span>
+          </div>
+
+          <h1 className="mb-6 font-serif text-5xl leading-tight tracking-tight text-[#3D3630] md:text-6xl">
+            让每一个岗位的
+            <br />
+            <span className="text-[#C8956C]">价值</span>都被精准衡量
           </h1>
-          <p className="text-lg text-gray-600 dark:text-gray-300">
-            高唐县财信投资发展集团有限公司
+
+          <p className="mx-auto mb-10 max-w-2xl text-lg leading-relaxed text-[#8B8580]">
+            基于国际通用的六因素十四维度评估模型，为企业提供从数据导入、在线评分到排名分析的一站式岗位价值评估解决方案。
+            专业、精准、高效。
+          </p>
+
+          {/* 快速开始 */}
+          <div className="mx-auto mb-6 flex max-w-md items-center gap-3 rounded-2xl border border-[#E8E3DD] bg-white p-2 shadow-sm">
+            <input
+              type="text"
+              value={evaluatorName}
+              onChange={(e) => setEvaluatorName(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleStartEvaluation()}
+              placeholder="输入您的姓名开始评估"
+              className="flex-1 border-0 bg-transparent px-3 py-2 text-[#2C2825] placeholder-[#D4CDC5] outline-none"
+            />
+            <button
+              onClick={handleStartEvaluation}
+              disabled={!evaluatorName.trim() || isStarting}
+              className="flex items-center gap-2 rounded-xl bg-[#3D3630] px-5 py-2.5 text-sm font-medium text-white transition-all hover:bg-[#2C2825] disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {isStarting ? '进入中...' : '开始评估'}
+              <ArrowRight className="h-4 w-4" />
+            </button>
+          </div>
+
+          <p className="text-xs text-[#D4CDC5]">
+            输入姓名即可开始，无需注册
           </p>
         </div>
+      </section>
 
-        {/* 主卡片 */}
-        <Card>
-          <CardHeader>
-            <CardTitle>开始评估</CardTitle>
-            <CardDescription>
-              请填写评估人信息，系统将加载集团所有岗位
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {/* 评估人姓名 */}
-            <div className="space-y-2">
-              <Label htmlFor="evaluator">评估人姓名</Label>
-              <Input
-                id="evaluator"
-                placeholder="请输入评估人姓名"
+      {/* ====== 数据亮点 ====== */}
+      <section className="border-y border-[#E8E3DD] bg-white px-6 py-10">
+        <div className="mx-auto grid max-w-4xl grid-cols-3 divide-x divide-[#E8E3DD]">
+          {[
+            { value: '6', unit: '大因素', desc: '全面覆盖岗位价值维度' },
+            { value: '14', unit: '个维度', desc: '精细量化每个岗位' },
+            { value: '1000', unit: '分制', desc: '国际通用评分标准' },
+          ].map((item) => (
+            <div key={item.desc} className="flex flex-col items-center gap-1 px-8">
+              <div className="flex items-baseline gap-1">
+                <span className="font-mono text-3xl font-bold text-[#3D3630]">{item.value}</span>
+                <span className="text-sm font-medium text-[#C8956C]">{item.unit}</span>
+              </div>
+              <span className="text-xs text-[#8B8580]">{item.desc}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ====== 功能介绍 ====== */}
+      <section id="features" className="px-6 py-24">
+        <div className="mx-auto max-w-7xl">
+          <div className="mb-16 text-center">
+            <h2 className="mb-4 font-serif text-3xl font-semibold tracking-tight text-[#3D3630]">
+              一站式评估工作台
+            </h2>
+            <p className="text-[#8B8580]">覆盖评估全流程，从数据准备到结果分析</p>
+          </div>
+
+          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+            {[
+              {
+                icon: <Upload className="h-6 w-6" />,
+                title: 'Excel 批量导入',
+                desc: '支持标准模板一键导入公司、岗位信息，自动校验数据格式，预览确认后入库。',
+              },
+              {
+                icon: <Edit3 className="h-6 w-6" />,
+                title: '矩阵式在线评分',
+                desc: '岗位×维度矩阵布局，支持分页浏览、自动保存、断点续评，评分体验流畅高效。',
+              },
+              {
+                icon: <BarChart3 className="h-6 w-6" />,
+                title: '智能排名分析',
+                desc: '多维度加权排序，自动生成岗位排名总表，支持按公司、部门筛选对比。',
+              },
+              {
+                icon: <Shield className="h-6 w-6" />,
+                title: '提交锁定机制',
+                desc: '评分提交后自动锁定，防止篡改。管理员可一键解锁，操作全程留痕。',
+              },
+              {
+                icon: <FileSpreadsheet className="h-6 w-6" />,
+                title: '结果导出',
+                desc: '评估结果一键导出 Excel，包含排名总表、详细评分矩阵，便于存档和汇报。',
+              },
+              {
+                icon: <Users className="h-6 w-6" />,
+                title: '多评估人协作',
+                desc: '支持多人同时在线评分，互不干扰。管理员可实时监控评估进度。',
+              },
+            ].map((feature, i) => (
+              <div
+                key={feature.title}
+                className="group rounded-2xl border border-[#E8E3DD] bg-white p-8 transition-all duration-300 hover:-translate-y-1 hover:border-[#C8956C]/30 hover:shadow-lg"
+                style={{ animationDelay: `${i * 80}ms` }}
+              >
+                <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-[#F5F1EC] text-[#C8956C] transition-colors group-hover:bg-[#C8956C] group-hover:text-white">
+                  {feature.icon}
+                </div>
+                <h3 className="mb-3 font-serif text-lg font-semibold text-[#3D3630]">{feature.title}</h3>
+                <p className="text-sm leading-relaxed text-[#8B8580]">{feature.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ====== 使用流程 ====== */}
+      <section id="workflow" className="border-t border-[#E8E3DD] bg-white px-6 py-24">
+        <div className="mx-auto max-w-4xl">
+          <div className="mb-16 text-center">
+            <h2 className="mb-4 font-serif text-3xl font-semibold tracking-tight text-[#3D3630]">
+              三步完成评估
+            </h2>
+            <p className="text-[#8B8580]">简单高效，从零到结果只需三步</p>
+          </div>
+
+          <div className="relative">
+            {/* 连接线 */}
+            <div className="absolute left-12 top-0 hidden h-full w-px bg-[#E8E3DD] md:block" />
+
+            {[
+              {
+                step: '01',
+                title: '导入数据',
+                desc: '下载标准 Excel 模板，填写公司、岗位信息后上传。系统自动校验并预览，确认无误后一键导入。',
+                icon: <Upload className="h-5 w-5" />,
+              },
+              {
+                step: '02',
+                title: '在线评分',
+                desc: '评估人输入姓名进入评分页面，在矩阵式界面中为每个岗位的 14 个维度打分。支持自动保存和断点续评。',
+                icon: <Edit3 className="h-5 w-5" />,
+              },
+              {
+                step: '03',
+                title: '查看结果',
+                desc: '管理员在后台查看排名统计和详细评分矩阵。支持一键导出 Excel 报告，便于存档和决策分析。',
+                icon: <TrendingUp className="h-5 w-5" />,
+              },
+            ].map((item, i) => (
+              <div key={item.step} className="relative flex gap-8 pb-12 last:pb-0">
+                <div className="relative z-10 flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#3D3630] text-sm font-mono font-bold text-white shadow-md">
+                  {item.step}
+                </div>
+                <div className="min-w-0 pt-1">
+                  <div className="mb-2 flex items-center gap-2">
+                    <span className="text-[#C8956C]">{item.icon}</span>
+                    <h3 className="font-serif text-xl font-semibold text-[#3D3630]">{item.title}</h3>
+                  </div>
+                  <p className="text-sm leading-relaxed text-[#8B8580]">{item.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ====== 评估模型预览 ====== */}
+      <section className="px-6 py-24">
+        <div className="mx-auto max-w-5xl">
+          <div className="mb-16 text-center">
+            <h2 className="mb-4 font-serif text-3xl font-semibold tracking-tight text-[#3D3630]">
+              六因素十四维度评估模型
+            </h2>
+            <p className="text-[#8B8580]">科学、系统、全面的岗位价值评估体系</p>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {[
+              { factor: '影响因素', weight: '250分', dims: '影响范围、影响程度', color: 'bg-[#F5F1EC] border-l-[#C8956C]' },
+              { factor: '解决问题', weight: '200分', dims: '问题复杂度、解决能力', color: 'bg-[#F5F1EC] border-l-[#C8956C]' },
+              { factor: '领导力', weight: '150分', dims: '领导范围、领导方式', color: 'bg-[#F5F1EC] border-l-[#C8956C]' },
+              { factor: '沟通', weight: '150分', dims: '内部沟通、外部沟通', color: 'bg-[#F5F1EC] border-l-[#C8956C]' },
+              { factor: '知识经验', weight: '100分', dims: '知识范围、知识深度', color: 'bg-[#F5F1EC] border-l-[#C8956C]' },
+              { factor: '环境条件', weight: '150分', dims: '舒适度、工作均衡、工作时间、可替代性', color: 'bg-[#F5F1EC] border-l-[#C8956C]' },
+            ].map((item) => (
+              <div
+                key={item.factor}
+                className={`rounded-xl border border-[#E8E3DD] border-l-4 bg-white p-6 transition-all hover:shadow-md ${item.color}`}
+              >
+                <div className="mb-2 flex items-center justify-between">
+                  <h4 className="font-serif text-base font-semibold text-[#3D3630]">{item.factor}</h4>
+                  <span className="font-mono text-sm font-bold text-[#C8956C]">{item.weight}</span>
+                </div>
+                <p className="text-xs text-[#8B8580]">{item.dims}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ====== CTA ====== */}
+      <section className="border-t border-[#E8E3DD] bg-[#3D3630] px-6 py-24">
+        <div className="mx-auto max-w-2xl text-center">
+          <h2 className="mb-4 font-serif text-3xl font-semibold tracking-tight text-white">
+            准备好开始评估了吗？
+          </h2>
+          <p className="mb-10 text-[#D4CDC5]">
+            无需注册，输入姓名即可开始。让数据为岗位价值说话。
+          </p>
+          <div className="flex items-center justify-center gap-4">
+            <div className="flex items-center gap-3 rounded-2xl border border-[#6B6560] bg-[#2C2825] p-2">
+              <input
+                type="text"
                 value={evaluatorName}
                 onChange={(e) => setEvaluatorName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && evaluatorName.trim()) {
-                    handleStartEvaluation();
-                  }
-                }}
+                onKeyDown={(e) => e.key === 'Enter' && handleStartEvaluation()}
+                placeholder="输入您的姓名"
+                className="w-48 border-0 bg-transparent px-3 py-2 text-white placeholder-[#8B8580] outline-none"
               />
+              <button
+                onClick={handleStartEvaluation}
+                disabled={!evaluatorName.trim() || isStarting}
+                className="flex items-center gap-2 rounded-xl bg-[#C8956C] px-5 py-2.5 text-sm font-medium text-white transition-all hover:bg-[#B07D58] disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                开始评估
+                <ChevronRight className="h-4 w-4" />
+              </button>
             </div>
-
-            {/* 信息提示 */}
-            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 space-y-2">
-              <div className="flex items-center space-x-2 text-blue-900 dark:text-blue-100">
-                <Users className="h-5 w-5" />
-                <span className="font-medium">评估范围</span>
-              </div>
-              <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1 ml-7">
-                <li>• 集团总部 + 所有下属公司</li>
-                <li>• 共 {positionCount} 个岗位</li>
-                <li>• 14 个评估维度</li>
-              </ul>
-            </div>
-
-            {/* 开始按钮 */}
-            <Button
-              onClick={handleStartEvaluation}
-              disabled={!evaluatorName.trim()}
-              className="w-full"
-              size="lg"
-            >
-              开始评分
-              <ChevronRight className="h-5 w-5 ml-2" />
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* 二维码入口 */}
-        <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => router.push('/qr-code')}>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="bg-purple-100 dark:bg-purple-900 p-2 rounded-lg">
-                  <QrCode className="h-6 w-6 text-purple-600 dark:text-purple-400" />
-                </div>
-                <div>
-                  <p className="font-medium text-gray-900 dark:text-white">扫码评估入口</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">获取二维码，支持微信扫码评估</p>
-                </div>
-              </div>
-              <ChevronRight className="h-5 w-5 text-gray-400" />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* 底部提示 */}
-        <div className="text-center text-xs text-gray-500 dark:text-gray-400">
-          <p>请认真填写评分，确保评估结果的准确性</p>
+          </div>
         </div>
-      </div>
+      </section>
+
+      {/* ====== Footer ====== */}
+      <footer className="border-t border-[#E8E3DD] bg-white px-6 py-10">
+        <div className="mx-auto flex max-w-7xl items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#3D3630]">
+              <BarChart3 className="h-4 w-4 text-[#FAF8F5]" />
+            </div>
+            <span className="text-sm font-medium text-[#6B6560]">岗位价值评估系统</span>
+          </div>
+          <div className="flex items-center gap-6 text-xs text-[#D4CDC5]">
+            <span>基于六因素十四维度评估模型</span>
+            <span className="h-3 w-px bg-[#E8E3DD]" />
+            <span>通用型岗位价值评估工具</span>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

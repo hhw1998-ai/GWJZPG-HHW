@@ -1,90 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 
-// 定义公司排序顺序
-const COMPANY_ORDER = [
-  '集团',
-  '海内外贸易业务中心',
-  '工程建设业务中心',
-  '物业服务业务中心',
-  '文化旅游业务中心',
-  '同建建筑',
-  '高唐水务',
-];
-
-// 定义岗位职级权重（数字越小，职级越高）
-const POSITION_LEVEL: Record<string, number> = {
-  // 高层管理
-  '经理': 1,
-  '部长': 1,
-  '主任': 1,
-  // 中层管理
-  '副经理': 2,
-  '副部长': 2,
-  '副主任': 2,
-  // 主管级
-  '主管': 3,
-  '项目负责人': 3,
-  '业务经理': 3,
-  '销售经理': 3,
-  '海外业务经理': 3,
-  '青岛公司经理': 3,
-  '青岛公司销售经理': 3,
-  // 专员级
-  '经理（研学）': 2,
-  '顾问': 3,
-  '技术负责人': 3,
-  // 普通岗位
-  '文秘岗': 10,
-  '行政管理岗': 10,
-  '后勤管理岗': 10,
-  '会计岗': 10,
-  '出纳岗': 10,
-  '内控岗': 10,
-  '法务岗': 10,
-  '人力资源岗': 10,
-  '党群管理岗': 10,
-  '文化宣传岗': 10,
-  '纪检监察岗': 10,
-  '现场管理岗': 10,
-  '内业管理岗': 10,
-  '投资管理岗': 10,
-  '融资管理岗': 10,
-  '安环管理岗': 10,
-  '运营管理岗': 10,
-  '资产管理岗': 10,
-  '单证员': 10,
-  '跟单员': 10,
-  '青岛公司综合岗': 10,
-  '招投标岗': 10,
-  '采购岗': 10,
-  '成本管理岗': 10,
-  '综合管理岗': 10,
-  '综合岗': 10,
-  '质量技术岗': 10,
-  '工程管理岗': 10,
-  '工程内业岗': 10,
-  '宣传岗': 10,
-  '运营岗': 10,
-};
-
-// 获取岗位职级权重
+// 通用岗位职级识别（基于关键词模糊匹配，不硬编码具体公司/岗位名）
 function getPositionLevel(name: string): number {
-  // 精确匹配
-  if (POSITION_LEVEL[name] !== undefined) {
-    return POSITION_LEVEL[name];
-  }
-  // 模糊匹配：岗位名包含"经理"、"部长"、"主任"等关键词
+  if (
+    name.includes('总经理') || name.includes('董事长') || name.includes('总裁')
+  ) return 0;
   if (name.includes('经理') || name.includes('部长') || name.includes('主任')) {
-    if (name.includes('副')) {
-      return 2; // 副经理、副部长、副主任
-    }
-    return 1; // 经理、部长、主任
+    if (name.includes('副')) return 2;
+    return 1;
   }
-  if (name.includes('主管')) {
-    return 3;
-  }
-  // 默认普通岗位
+  if (name.includes('主管') || name.includes('负责人')) return 3;
   return 99;
 }
 
@@ -133,11 +59,13 @@ export async function GET(request: NextRequest) {
       companies.map((c: any) => [c.id, c])
     );
 
-    // 创建公司排序索引映射
+    // 创建公司排序索引映射（通用：按名称拼音排序）
+    const sortedCompanyNames = companies
+      .map((c: any) => c.name)
+      .sort((a: string, b: string) => a.localeCompare(b, 'zh-CN'));
     const companyOrderMap: Record<string, number> = {};
     companies.forEach((c: any) => {
-      const orderIndex = COMPANY_ORDER.indexOf(c.name);
-      companyOrderMap[c.id] = orderIndex >= 0 ? orderIndex : 999;
+      companyOrderMap[c.id] = sortedCompanyNames.indexOf(c.name);
     });
 
     // 统计每个岗位的评分数量（内存计算，避免N+1查询）

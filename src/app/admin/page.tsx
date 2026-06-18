@@ -1,320 +1,279 @@
 'use client';
 
-import { useState, useEffect, Fragment, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ChevronLeft, Download, RefreshCw, Trash2, AlertTriangle, ChevronDown, ChevronUp, Upload, CheckCircle, Lock, Unlock, History, User, FileWarning, AlertCircle } from 'lucide-react';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  ChevronLeft,
+  ChevronDown,
+  ChevronUp,
+  Upload,
+  RefreshCw,
+  Trash2,
+  AlertTriangle,
+  Download,
+  Lock,
+  Unlock,
+  User,
+  History,
+  CheckCircle,
+  AlertCircle,
+  FileWarning,
+  BarChart3,
+  Users,
+  TrendingUp,
+  Award,
+  Shield,
+  Settings,
+  Database,
+  FileSpreadsheet,
+  LogOut,
+} from 'lucide-react';
 import * as XLSX from 'xlsx';
 
-interface Ranking {
-  id: string;
-  name: string;
-  department: string;
+interface RankingItem {
+  positionId: string;
+  positionName: string;
   companyName: string;
+  department: string;
   averageScore: number;
   evaluationCount: number;
   evaluators: string[];
+}
+
+interface PositionDetail extends RankingItem {
+  expanded?: boolean;
+  detailedScores: DetailedScore[];
 }
 
 interface DetailedScore {
   id: string;
-  positionId: string;
-  positionName: string;
-  department: string;
-  companyName: string;
-  evaluatorId: string;
   evaluatorName: string;
-  totalScore: number;
   scores: Record<string, number>;
-  createdAt: string;
+  totalScore: number;
 }
 
-interface PositionDetail {
-  positionId: string;
-  positionName: string;
-  department: string;
-  companyName: string;
-  averageScore: number;
-  evaluationCount: number;
-  evaluators: string[];
-  detailedScores: DetailedScore[];
-  expanded: boolean;
-}
-
-// 已提交的评估人信息
 interface SubmittedEvaluator {
   name: string;
   count: number;
 }
 
-// 操作日志
 interface OperationLog {
   id: string;
   evaluator_name: string;
   operation_type: string;
-  position_id: string | null;
   position_name: string | null;
   operator_name: string;
   created_at: string;
 }
 
-// 导入错误接口
-interface ImportError {
-  companyName: string;
-  rowIndex: number;
-  errorType: string;
-  message: string;
-}
-
-// 预览岗位数据接口
-interface PreviewPosition {
-  companyName: string;
-  department: string;
-  positionName: string;
-  rowIndex: number;
-  sheetName: string;
-}
-
-// 预览结果接口
 interface PreviewResult {
   success: boolean;
   message: string;
-  detectedCompanies: string[];
   totalPositions: number;
   validPositions: number;
   invalidPositions: number;
-  positions: PreviewPosition[];
-  errors: ImportError[];
-  errorReport?: string;
+  positions: Array<{
+    companyName: string;
+    department: string;
+    positionName: string;
+  }>;
+  detectedCompanies: string[];
+  errors: Array<{
+    rowIndex: number;
+    companyName: string;
+    errorType: string;
+    message: string;
+  }>;
   canImport: boolean;
 }
 
-// 导入结果接口
 interface ImportResult {
   success: boolean;
   message: string;
   importedCount: number;
   skippedCount: number;
   errorCount: number;
-  errors?: ImportError[];
-  errorReport?: string;
+  errors?: Array<{
+    rowIndex: number;
+    companyName: string;
+    errorType: string;
+    message: string;
+  }>;
+}
+
+const dimensionNames: Record<string, string> = {
+  impact_range: '影响范围',
+  impact_level: '影响程度',
+  problem_complexity: '问题复杂性',
+  problem_solving: '问题解决',
+  leadership_range: '领导范围',
+  leadership_style: '领导方式',
+  internal_communication: '内部沟通',
+  external_communication: '外部沟通',
+  knowledge_scope: '知识范围',
+  knowledge_level: '知识水平',
+  environment_comfort: '环境舒适度',
+  work_balance: '工作均衡性',
+  work_time: '工作时间',
+  replaceability: '可替代性',
+};
+
+const operationTypeNames: Record<string, string> = {
+  unlock_all: '全部解锁',
+  unlock_position: '解锁岗位',
+  clear_scores: '清空评分',
+  full_reset: '完全重置',
+  import_data: '导入数据',
+};
+
+function formatDateTime(dateStr: string): string {
+  const d = new Date(dateStr);
+  return d.toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function formatOperationType(type: string): string {
+  return operationTypeNames[type] || type;
 }
 
 export default function AdminPage() {
   const router = useRouter();
-  const [rankings, setRankings] = useState<Ranking[]>([]);
-  const [detailedScores, setDetailedScores] = useState<DetailedScore[]>([]);
-  const [positionDetails, setPositionDetails] = useState<PositionDetail[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [rankings, setRankings] = useState<RankingItem[]>([]);
+  const [positionDetails, setPositionDetails] = useState<PositionDetail[]>([]);
+  const [submittedEvaluators, setSubmittedEvaluators] = useState<SubmittedEvaluator[]>([]);
+  const [operationLogs, setOperationLogs] = useState<OperationLog[]>([]);
+
+  // Dialog states
+  const [showUnlockDialog, setShowUnlockDialog] = useState(false);
   const [showClearDialog, setShowClearDialog] = useState(false);
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [showImportDialog, setShowImportDialog] = useState(false);
+  const [selectedEvaluator, setSelectedEvaluator] = useState('');
+  const [unlocking, setUnlocking] = useState(false);
   const [isOperating, setIsOperating] = useState(false);
-  const [isImporting, setIsImporting] = useState(false);
-  const [importResult, setImportResult] = useState<ImportResult | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // 预览相关状态
-  const [previewResult, setPreviewResult] = useState<PreviewResult | null>(null);
+  // Import states
   const [isPreviewing, setIsPreviewing] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
+  const [previewResult, setPreviewResult] = useState<PreviewResult | null>(null);
+  const [importResult, setImportResult] = useState<ImportResult | null>(null);
 
-  // 解锁功能相关状态
-  const [submittedEvaluators, setSubmittedEvaluators] = useState<SubmittedEvaluator[]>([]);
-  const [operationLogs, setOperationLogs] = useState<OperationLog[]>([]);
-  const [selectedEvaluator, setSelectedEvaluator] = useState<string>('');
-  const [showUnlockDialog, setShowUnlockDialog] = useState(false);
-  const [unlocking, setUnlocking] = useState(false);
-  const [activeTab, setActiveTab] = useState<string>('rankings');
-
-  const dimensionNames: Record<string, string> = {
-    impact_range: '影响范围',
-    impact_level: '影响程度',
-    problem_complexity: '问题复杂性',
-    problem_solving: '问题解决',
-    leadership_range: '领导范围',
-    leadership_style: '领导方式',
-    internal_communication: '内部沟通',
-    external_communication: '外部沟通',
-    knowledge_scope: '知识范围',
-    knowledge_level: '知识水平',
-    environment_comfort: '环境舒适度',
-    work_balance: '工作均衡性',
-    work_time: '工作时间',
-    replaceability: '可替代性'
-  };
-
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
-    setIsLoading(true);
+  const loadData = useCallback(async () => {
     try {
-      // 并行加载排名数据和详细评分数据
-      const [rankingsRes, detailedRes] = await Promise.all([
+      setIsLoading(true);
+      const [rankingsRes, unlockRes, logsRes] = await Promise.all([
         fetch('/api/rankings'),
-        fetch('/api/admin/detailed-scores')
+        fetch('/api/admin/unlock'),
+        fetch('/api/admin/operation-logs'),
       ]);
 
-      const rankingsResult = await rankingsRes.json();
-      const detailedResult = await detailedRes.json();
-
       if (rankingsRes.ok) {
-        setRankings(rankingsResult.data || []);
+        const data = await rankingsRes.json();
+        setRankings(data.rankings || []);
+        setPositionDetails(
+          (data.rankings || []).map((r: RankingItem) => ({
+            ...r,
+            expanded: false,
+            detailedScores: [],
+          }))
+        );
       }
 
-      if (detailedRes.ok) {
-        setDetailedScores(detailedResult.data || []);
-        // 组装岗位详细数据
-        assemblePositionDetails(rankingsResult.data || [], detailedResult.data || []);
+      if (unlockRes.ok) {
+        const data = await unlockRes.json();
+        setSubmittedEvaluators(data.evaluators || []);
       }
 
-      // 加载已提交的评估人和操作日志
-      await loadUnlockData();
+      if (logsRes.ok) {
+        const data = await logsRes.json();
+        setOperationLogs(data.logs || []);
+      }
     } catch (error) {
       console.error('加载数据失败:', error);
-      alert('加载数据失败');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  // 加载解锁相关数据
-  const loadUnlockData = async () => {
-    try {
-      // 加载已提交的评估人列表
-      const submittedRes = await fetch('/api/admin/unlock');
-      if (submittedRes.ok) {
-        const submittedResult = await submittedRes.json();
-        setSubmittedEvaluators(submittedResult.data || []);
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const togglePositionExpand = async (positionId: string) => {
+    const updated = positionDetails.map((p) => {
+      if (p.positionId === positionId) {
+        return { ...p, expanded: !p.expanded };
       }
-
-      // 加载操作日志
-      const logsRes = await fetch('/api/admin/operation-logs');
-      if (logsRes.ok) {
-        const logsResult = await logsRes.json();
-        setOperationLogs(logsResult.data || []);
-      }
-    } catch (error) {
-      console.error('加载解锁数据失败:', error);
-    }
-  };
-
-  const assemblePositionDetails = (rankingsData: Ranking[], scoresData: DetailedScore[]) => {
-    const details: PositionDetail[] = rankingsData.map(ranking => {
-      const positionScores = scoresData.filter(s => s.positionId === ranking.id);
-      return {
-        positionId: ranking.id,
-        positionName: ranking.name,
-        department: ranking.department,
-        companyName: ranking.companyName,
-        averageScore: ranking.averageScore,
-        evaluationCount: ranking.evaluationCount,
-        evaluators: ranking.evaluators,
-        detailedScores: positionScores,
-        expanded: false
-      };
+      return p;
     });
-    setPositionDetails(details);
-  };
+    setPositionDetails(updated);
 
-  const togglePositionExpand = (positionId: string) => {
-    setPositionDetails(prev => prev.map(p => 
-      p.positionId === positionId ? { ...p, expanded: !p.expanded } : p
-    ));
-  };
-
-  // 解锁评估人评分
-  const handleUnlock = async () => {
-    if (!selectedEvaluator) {
-      alert('请选择要解锁的评估人');
-      return;
+    const target = updated.find((p) => p.positionId === positionId);
+    if (target?.expanded && target.detailedScores.length === 0) {
+      try {
+        const res = await fetch(`/api/admin/detailed-scores?positionId=${positionId}`);
+        if (res.ok) {
+          const data = await res.json();
+          setPositionDetails((prev) =>
+            prev.map((p) =>
+              p.positionId === positionId
+                ? { ...p, detailedScores: data.scores || [] }
+                : p
+            )
+          );
+        }
+      } catch (error) {
+        console.error('加载详细评分失败:', error);
+      }
     }
+  };
 
+  const handleUnlock = async () => {
     setUnlocking(true);
     try {
-      const response = await fetch('/api/admin/unlock', {
+      const res = await fetch('/api/admin/unlock', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          evaluatorName: selectedEvaluator,
-          operatorName: '管理员',
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ evaluatorName: selectedEvaluator }),
       });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || '解锁失败');
+      if (res.ok) {
+        setShowUnlockDialog(false);
+        await loadData();
+      } else {
+        alert('解锁失败，请重试');
       }
-
-      alert(result.message || '解锁成功');
-      setShowUnlockDialog(false);
-      setSelectedEvaluator('');
-      
-      // 刷新数据
-      loadUnlockData();
     } catch (error) {
       console.error('解锁失败:', error);
-      alert(error instanceof Error ? error.message : '解锁失败，请重试');
+      alert('解锁失败，请重试');
     } finally {
       setUnlocking(false);
     }
   };
 
-  // 格式化操作类型
-  const formatOperationType = (type: string): string => {
-    const typeMap: Record<string, string> = {
-      'unlock_all': '解锁全部评分',
-      'unlock_position': '解锁单个岗位',
-      'modify': '修改评分',
-    };
-    return typeMap[type] || type;
-  };
-
-  // 格式化时间
-  const formatDateTime = (dateString: string): string => {
-    return new Date(dateString).toLocaleString('zh-CN', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
   const handleClearScores = async () => {
     setIsOperating(true);
     try {
-      const response = await fetch('/api/admin/reset', { method: 'DELETE' });
-      const result = await response.json();
-
-      if (!response.ok) throw new Error(result.error);
-
-      alert('评分数据已清空');
-      setShowClearDialog(false);
-      loadData();
+      const res = await fetch('/api/admin/reset', { method: 'DELETE' });
+      if (res.ok) {
+        setShowClearDialog(false);
+        await loadData();
+      } else {
+        alert('清空失败，请重试');
+      }
     } catch (error) {
       console.error('清空失败:', error);
       alert('清空失败，请重试');
@@ -326,14 +285,13 @@ export default function AdminPage() {
   const handleFullReset = async () => {
     setIsOperating(true);
     try {
-      const response = await fetch('/api/admin/full-reset', { method: 'DELETE' });
-      const result = await response.json();
-
-      if (!response.ok) throw new Error(result.error);
-
-      alert('系统已完全重置');
-      setShowResetDialog(false);
-      loadData();
+      const res = await fetch('/api/admin/full-reset', { method: 'DELETE' });
+      if (res.ok) {
+        setShowResetDialog(false);
+        await loadData();
+      } else {
+        alert('重置失败，请重试');
+      }
     } catch (error) {
       console.error('重置失败:', error);
       alert('重置失败，请重试');
@@ -342,20 +300,9 @@ export default function AdminPage() {
     }
   };
 
-  // 预览Excel文件
-  const handlePreviewExcel = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+  const handlePreviewExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
     if (!file) return;
-
-    // 验证文件类型
-    const validTypes = [
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'application/vnd.ms-excel'
-    ];
-    if (!validTypes.includes(file.type) && !file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
-      alert('请上传 Excel 文件（.xlsx 或 .xls）');
-      return;
-    }
 
     setIsPreviewing(true);
     setPreviewResult(null);
@@ -364,144 +311,96 @@ export default function AdminPage() {
     try {
       const formData = new FormData();
       formData.append('file', file);
-
-      const response = await fetch('/api/preview-excel', {
+      const res = await fetch('/api/preview-excel', {
         method: 'POST',
         body: formData,
       });
-
-      const result = await response.json();
-      setPreviewResult(result);
+      const data = await res.json();
+      setPreviewResult(data);
     } catch (error) {
       console.error('预览失败:', error);
-      setPreviewResult({
-        success: false,
-        message: error instanceof Error ? error.message : '预览失败，请重试',
-        detectedCompanies: [],
-        totalPositions: 0,
-        validPositions: 0,
-        invalidPositions: 0,
-        positions: [],
-        errors: [],
-        canImport: false,
-      });
+      alert('文件识读失败，请检查文件格式');
     } finally {
       setIsPreviewing(false);
-      // 清空文件输入，允许重新选择同一文件
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
     }
   };
 
-  // 确认导入
   const handleConfirmImport = async () => {
-    if (!previewResult || !previewResult.canImport) return;
+    if (!previewResult) return;
 
     setIsConfirming(true);
-
     try {
-      const response = await fetch('/api/confirm-import', {
+      const res = await fetch('/api/confirm-import', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          positions: previewResult.positions,
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ positions: previewResult.positions }),
       });
-
-      const result = await response.json();
-      setImportResult(result);
-
-      // 如果有成功导入的数据，刷新页面数据
-      if (result.importedCount > 0) {
-        loadData();
-        // 清空预览结果
-        setPreviewResult(null);
+      const data = await res.json();
+      setImportResult(data);
+      if (data.success) {
+        await loadData();
       }
     } catch (error) {
       console.error('导入失败:', error);
-      setImportResult({
-        success: false,
-        message: error instanceof Error ? error.message : '导入失败，请重试',
-        importedCount: 0,
-        skippedCount: 0,
-        errorCount: 0,
-      });
+      alert('导入失败，请重试');
     } finally {
       setIsConfirming(false);
     }
   };
 
-  // 下载预览错误报告
   const downloadPreviewErrorReport = () => {
-    if (!previewResult?.errorReport) return;
-
-    const blob = new Blob([previewResult.errorReport], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `识读错误报告_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}.txt`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    if (!previewResult?.errors.length) return;
+    const ws = XLSX.utils.json_to_sheet(
+      previewResult.errors.map((e) => ({
+        '行号': e.rowIndex,
+        '公司': e.companyName,
+        '错误类型': e.errorType,
+        '错误描述': e.message,
+      }))
+    );
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '错误报告');
+    XLSX.writeFile(wb, `Excel导入错误报告_${new Date().toISOString().slice(0, 10)}.xlsx`);
   };
 
-  // 下载导入错误报告
   const downloadImportErrorReport = () => {
-    if (!importResult?.errorReport) return;
-
-    const blob = new Blob([importResult.errorReport], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `导入错误报告_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}.txt`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    if (!importResult?.errors?.length) return;
+    const ws = XLSX.utils.json_to_sheet(
+      importResult.errors.map((e) => ({
+        '行号': e.rowIndex,
+        '公司': e.companyName,
+        '错误类型': e.errorType,
+        '错误描述': e.message,
+      }))
+    );
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '导入错误报告');
+    XLSX.writeFile(wb, `导入错误报告_${new Date().toISOString().slice(0, 10)}.xlsx`);
   };
 
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
     try {
-      // 准备详细导出数据
-      const exportData: any[] = [];
+      const exportData: Record<string, string | number>[] = [];
 
-      positionDetails.forEach((position, index) => {
-        // 添加汇总行
-        exportData.push({
-          '排名': index + 1,
-          '公司': position.companyName,
-          '部门': position.department,
-          '岗位': position.positionName,
-          '评估人': '【汇总】',
-          '影响范围': '',
-          '影响程度': '',
-          '问题复杂性': '',
-          '问题解决': '',
-          '领导范围': '',
-          '领导方式': '',
-          '内部沟通': '',
-          '外部沟通': '',
-          '知识范围': '',
-          '知识水平': '',
-          '环境舒适度': '',
-          '工作均衡性': '',
-          '工作时间': '',
-          '可替代性': '',
-          '总分': position.averageScore,
-          '备注': `共${position.evaluationCount}人评分`
-        });
+      for (const position of positionDetails) {
+        if (position.detailedScores.length === 0) {
+          try {
+            const res = await fetch(`/api/admin/detailed-scores?positionId=${position.positionId}`);
+            if (res.ok) {
+              const data = await res.json();
+              position.detailedScores = data.scores || [];
+            }
+          } catch (error) {
+            console.error('加载详细评分失败:', error);
+          }
+        }
 
-        // 添加每个评估人的详细评分
-        position.detailedScores.forEach(score => {
+        position.detailedScores.forEach((score) => {
           exportData.push({
             '排名': '',
-            '公司': '',
-            '部门': '',
-            '岗位': '',
+            '公司': position.companyName,
+            '部门': position.department,
+            '岗位': position.positionName,
             '评估人': score.evaluatorName,
             '影响范围': score.scores.impact_range || '',
             '影响程度': score.scores.impact_level || '',
@@ -518,11 +417,10 @@ export default function AdminPage() {
             '工作时间': score.scores.work_time || '',
             '可替代性': score.scores.replaceability || '',
             '总分': score.totalScore,
-            '备注': ''
+            '备注': '',
           });
         });
 
-        // 添加空行分隔
         exportData.push({
           '排名': '',
           '公司': '',
@@ -544,32 +442,22 @@ export default function AdminPage() {
           '工作时间': '',
           '可替代性': '',
           '总分': '',
-          '备注': ''
+          '备注': '',
         });
-      });
+      }
 
-      // 创建工作簿
       const worksheet = XLSX.utils.json_to_sheet(exportData);
-      
-      // 设置列宽
       worksheet['!cols'] = [
-        { wch: 6 },  // 排名
-        { wch: 25 }, // 公司
-        { wch: 15 }, // 部门
-        { wch: 15 }, // 岗位
-        { wch: 12 }, // 评估人
-        { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, // 维度
-        { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, // 维度
-        { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, // 维度
-        { wch: 10 }, { wch: 10 }, // 维度
-        { wch: 8 },  // 总分
-        { wch: 15 }, // 备注
+        { wch: 6 }, { wch: 25 }, { wch: 15 }, { wch: 15 }, { wch: 12 },
+        { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 },
+        { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 },
+        { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 },
+        { wch: 8 }, { wch: 15 },
       ];
 
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, '岗位价值评估明细');
 
-      // 创建岗位排名总表（按总分从高到低排序）
       const sortedPositions = [...positionDetails].sort((a, b) => b.averageScore - a.averageScore);
       const rankingData = sortedPositions.map((position, index) => ({
         '排名': index + 1,
@@ -578,22 +466,16 @@ export default function AdminPage() {
         '岗位': position.positionName,
         '千分制得分': position.averageScore,
         '评分人数': position.evaluationCount,
-        '备注': ''
+        '备注': '',
       }));
 
       const rankingSheet = XLSX.utils.json_to_sheet(rankingData);
       rankingSheet['!cols'] = [
-        { wch: 6 },  // 排名
-        { wch: 25 }, // 公司
-        { wch: 15 }, // 部门
-        { wch: 15 }, // 岗位
-        { wch: 12 }, // 千分制得分
-        { wch: 10 }, // 评分人数
-        { wch: 15 }, // 备注
+        { wch: 6 }, { wch: 25 }, { wch: 15 }, { wch: 15 },
+        { wch: 12 }, { wch: 10 }, { wch: 15 },
       ];
       XLSX.utils.book_append_sheet(workbook, rankingSheet, '岗位排名总表');
 
-      // 导出文件
       const fileName = `岗位价值评估明细_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}.xlsx`;
       XLSX.writeFile(workbook, fileName);
     } catch (error) {
@@ -602,268 +484,426 @@ export default function AdminPage() {
     }
   };
 
+  // Compute dashboard stats
+  const totalPositions = rankings.length;
+  const evaluatedPositions = rankings.filter((r) => r.evaluationCount > 0).length;
+  const totalEvaluators = new Set(rankings.flatMap((r) => r.evaluators)).size;
+  const avgScore =
+    rankings.length > 0
+      ? Math.round(rankings.reduce((sum, r) => sum + r.averageScore, 0) / rankings.length)
+      : 0;
+  const topScore = rankings.length > 0 ? rankings[0].averageScore : 0;
+  const bottomScore = rankings.length > 0 ? rankings[rankings.length - 1].averageScore : 0;
+  const evaluationRate = totalPositions > 0 ? Math.round((evaluatedPositions / totalPositions) * 100) : 0;
+
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#FAF8F5' }}>
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">加载中...</p>
+          <div className="w-10 h-10 border-2 rounded-full animate-spin mx-auto mb-4" style={{ borderColor: '#E8E3DD', borderTopColor: '#C8956C' }} />
+          <p className="text-sm" style={{ color: '#8B8580' }}>加载中...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4">
-      <div className="max-w-7xl mx-auto space-y-6">
-        {/* 头部 */}
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <div className="flex items-center space-x-4">
-            <Button variant="ghost" size="icon" onClick={() => router.push('/')}>
-              <ChevronLeft className="h-6 w-6" />
+    <div className="min-h-screen" style={{ backgroundColor: '#FAF8F5' }}>
+      {/* Top Navigation Bar */}
+      <header className="sticky top-0 z-50 border-b backdrop-blur-sm" style={{ backgroundColor: 'rgba(255,255,255,0.92)', borderColor: '#E8E3DD' }}>
+        <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => router.push('/')}
+              className="hover:bg-[#F5F2EE]"
+            >
+              <ChevronLeft className="h-5 w-5" style={{ color: '#3D3630' }} />
             </Button>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                后台管理
-              </h1>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                数据统计与导出
-              </p>
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#3D3630' }}>
+                <Shield className="h-4 w-4 text-white" />
+              </div>
+              <div>
+                <h1 className="text-base font-semibold" style={{ color: '#2C2825', fontFamily: "'DM Serif Display', serif" }}>
+                  评估管理后台
+                </h1>
+              </div>
             </div>
           </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => router.push('/')}
+              className="text-sm"
+              style={{ color: '#8B8580' }}
+            >
+              <LogOut className="h-4 w-4 mr-1.5" />
+              退出后台
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
+        {/* Page Title & Actions */}
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <div>
+            <p className="text-xs font-medium tracking-wider uppercase" style={{ color: '#C8956C' }}>Admin Workspace</p>
+            <h2 className="text-xl font-semibold mt-0.5" style={{ color: '#2C2825' }}>数据总览与系统管理</h2>
+          </div>
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" onClick={() => setShowImportDialog(true)}>
-              <Upload className="h-4 w-4 mr-2" />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowImportDialog(true)}
+              className="border-[#E8E3DD] text-[#3D3630] hover:bg-[#F5F2EE]"
+            >
+              <Upload className="h-4 w-4 mr-1.5" />
               导入数据
             </Button>
-            <Button variant="outline" onClick={loadData}>
-              <RefreshCw className="h-4 w-4 mr-2" />
-              刷新数据
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={loadData}
+              className="border-[#E8E3DD] text-[#3D3630] hover:bg-[#F5F2EE]"
+            >
+              <RefreshCw className="h-4 w-4 mr-1.5" />
+              刷新
             </Button>
-            <Button variant="destructive" onClick={() => setShowClearDialog(true)}>
-              <Trash2 className="h-4 w-4 mr-2" />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportExcel}
+              disabled={rankings.length === 0}
+              className="border-[#E8E3DD] text-[#3D3630] hover:bg-[#F5F2EE]"
+            >
+              <Download className="h-4 w-4 mr-1.5" />
+              导出 Excel
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowClearDialog(true)}
+              className="border-[#E8E3DD] text-[#D4954B] hover:bg-[#FFF8F0]"
+            >
+              <Trash2 className="h-4 w-4 mr-1.5" />
               清空评分
             </Button>
-            <Button variant="destructive" onClick={() => setShowResetDialog(true)}>
-              <AlertTriangle className="h-4 w-4 mr-2" />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowResetDialog(true)}
+              className="border-[#E8E3DD] text-red-600 hover:bg-red-50"
+            >
+              <AlertTriangle className="h-4 w-4 mr-1.5" />
               完全重置
-            </Button>
-            <Button onClick={handleExportExcel} disabled={rankings.length === 0}>
-              <Download className="h-4 w-4 mr-2" />
-              导出Excel
             </Button>
           </div>
         </div>
 
-        {/* 统计卡片 */}
-        <div className="grid gap-4 md:grid-cols-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>总岗位数</CardDescription>
-              <CardTitle className="text-3xl">{rankings.length}</CardTitle>
-            </CardHeader>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>已评分岗位</CardDescription>
-              <CardTitle className="text-3xl">
-                {rankings.filter(r => r.evaluationCount > 0).length}
-              </CardTitle>
-            </CardHeader>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>最高得分</CardDescription>
-              <CardTitle className="text-3xl">
-                {rankings.length > 0 ? rankings[0].averageScore : 0}
-              </CardTitle>
-            </CardHeader>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>最低得分</CardDescription>
-              <CardTitle className="text-3xl">
-                {rankings.length > 0 ? rankings[rankings.length - 1].averageScore : 0}
-              </CardTitle>
-            </CardHeader>
-          </Card>
-        </div>
-
-        {/* 使用 Tabs 来组织内容 */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="rankings">岗位排名</TabsTrigger>
-            <TabsTrigger value="unlock">评分解锁</TabsTrigger>
-            <TabsTrigger value="logs">操作日志</TabsTrigger>
+        {/* Tabs Navigation */}
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="w-full justify-start gap-0 border-b rounded-none bg-transparent p-0" style={{ borderColor: '#E8E3DD' }}>
+            {[
+              { value: 'dashboard', label: '仪表盘', icon: BarChart3 },
+              { value: 'rankings', label: '岗位排名', icon: TrendingUp },
+              { value: 'unlock', label: '评分解锁', icon: Unlock },
+              { value: 'logs', label: '操作日志', icon: History },
+            ].map((tab) => (
+              <TabsTrigger
+                key={tab.value}
+                value={tab.value}
+                className="flex items-center gap-1.5 px-4 py-3 text-sm rounded-none border-b-2 border-transparent data-[state=active]:border-[#C8956C] data-[state=active]:text-[#3D3630] data-[state=active]:shadow-none text-[#8B8580] hover:text-[#3D3630] transition-colors"
+              >
+                <tab.icon className="h-4 w-4" />
+                {tab.label}
+              </TabsTrigger>
+            ))}
           </TabsList>
 
-          {/* 岗位排名 Tab */}
-          <TabsContent value="rankings">
-            <Card>
+          {/* Dashboard Tab */}
+          <TabsContent value="dashboard" className="mt-6 space-y-6">
+            {/* Stats Grid */}
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <Card className="border-[#E8E3DD] shadow-none">
+                <CardHeader className="pb-2">
+                  <CardDescription className="text-xs" style={{ color: '#8B8580' }}>岗位总数</CardDescription>
+                  <CardTitle className="text-2xl" style={{ color: '#2C2825', fontFamily: "'JetBrains Mono', monospace" }}>
+                    {totalPositions}
+                  </CardTitle>
+                </CardHeader>
+              </Card>
+              <Card className="border-[#E8E3DD] shadow-none">
+                <CardHeader className="pb-2">
+                  <CardDescription className="text-xs" style={{ color: '#8B8580' }}>已评估岗位</CardDescription>
+                  <CardTitle className="text-2xl" style={{ color: '#2C2825', fontFamily: "'JetBrains Mono', monospace" }}>
+                    {evaluatedPositions}
+                    <span className="text-sm font-normal ml-1" style={{ color: '#8B8580' }}>/ {evaluationRate}%</span>
+                  </CardTitle>
+                </CardHeader>
+              </Card>
+              <Card className="border-[#E8E3DD] shadow-none">
+                <CardHeader className="pb-2">
+                  <CardDescription className="text-xs" style={{ color: '#8B8580' }}>评估人数</CardDescription>
+                  <CardTitle className="text-2xl" style={{ color: '#2C2825', fontFamily: "'JetBrains Mono', monospace" }}>
+                    {totalEvaluators}
+                  </CardTitle>
+                </CardHeader>
+              </Card>
+              <Card className="border-[#E8E3DD] shadow-none">
+                <CardHeader className="pb-2">
+                  <CardDescription className="text-xs" style={{ color: '#8B8580' }}>平均得分</CardDescription>
+                  <CardTitle className="text-2xl" style={{ color: '#2C2825', fontFamily: "'JetBrains Mono', monospace" }}>
+                    {avgScore}
+                  </CardTitle>
+                </CardHeader>
+              </Card>
+            </div>
+
+            {/* Score Range */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Card className="border-[#E8E3DD] shadow-none">
+                <CardHeader className="pb-3">
+                  <CardDescription className="text-xs" style={{ color: '#8B8580' }}>得分分布</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {rankings.length === 0 ? (
+                    <p className="text-sm text-center py-8" style={{ color: '#8B8580' }}>暂无数据</p>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between text-sm">
+                        <span style={{ color: '#8B8580' }}>最高分</span>
+                        <span className="font-semibold" style={{ color: '#5B8C5A', fontFamily: "'JetBrains Mono', monospace" }}>{topScore}</span>
+                      </div>
+                      <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: '#F5F2EE' }}>
+                        <div className="h-full rounded-full transition-all" style={{ width: `${Math.min((topScore / 1000) * 100, 100)}%`, backgroundColor: '#C8956C' }} />
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span style={{ color: '#8B8580' }}>最低分</span>
+                        <span className="font-semibold" style={{ color: '#D4954B', fontFamily: "'JetBrains Mono', monospace" }}>{bottomScore}</span>
+                      </div>
+                      <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: '#F5F2EE' }}>
+                        <div className="h-full rounded-full transition-all" style={{ width: `${Math.min((bottomScore / 1000) * 100, 100)}%`, backgroundColor: '#E8D5C4' }} />
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card className="border-[#E8E3DD] shadow-none">
+                <CardHeader className="pb-3">
+                  <CardDescription className="text-xs" style={{ color: '#8B8580' }}>快速操作</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start border-[#E8E3DD] text-[#3D3630] hover:bg-[#F5F2EE]"
+                    onClick={() => setShowImportDialog(true)}
+                  >
+                    <FileSpreadsheet className="h-4 w-4 mr-2" />
+                    导入 Excel 岗位数据
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start border-[#E8E3DD] text-[#3D3630] hover:bg-[#F5F2EE]"
+                    onClick={handleExportExcel}
+                    disabled={rankings.length === 0}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    导出评估结果
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start border-[#E8E3DD] text-[#3D3630] hover:bg-[#F5F2EE]"
+                    onClick={() => setActiveTab('unlock')}
+                  >
+                    <Unlock className="h-4 w-4 mr-2" />
+                    管理评分解锁
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Recent Activity */}
+            <Card className="border-[#E8E3DD] shadow-none">
+              <CardHeader className="pb-3">
+                <CardDescription className="text-xs" style={{ color: '#8B8580' }}>最近操作</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {operationLogs.length === 0 ? (
+                  <p className="text-sm text-center py-6" style={{ color: '#8B8580' }}>暂无操作记录</p>
+                ) : (
+                  <div className="space-y-2">
+                    {operationLogs.slice(0, 5).map((log) => (
+                      <div key={log.id} className="flex items-center gap-3 text-sm py-2 border-b last:border-0" style={{ borderColor: '#F5F2EE' }}>
+                        <span className="text-xs" style={{ color: '#8B8580', fontFamily: "'JetBrains Mono', monospace" }}>
+                          {formatDateTime(log.created_at)}
+                        </span>
+                        <span className="px-1.5 py-0.5 rounded text-xs font-medium" style={{
+                          backgroundColor: log.operation_type.includes('unlock') ? '#FFF8F0' : '#F0F7F0',
+                          color: log.operation_type.includes('unlock') ? '#D4954B' : '#5B8C5A',
+                        }}>
+                          {formatOperationType(log.operation_type)}
+                        </span>
+                        <span style={{ color: '#2C2825' }}>{log.evaluator_name}</span>
+                        {log.position_name && (
+                          <span style={{ color: '#8B8580' }}>- {log.position_name}</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Rankings Tab */}
+          <TabsContent value="rankings" className="mt-6">
+            <Card className="border-[#E8E3DD] shadow-none">
               <CardHeader>
-                <CardTitle>岗位价值排名（点击展开查看详细评分）</CardTitle>
-                <CardDescription>
+                <CardTitle style={{ color: '#2C2825' }}>岗位价值排名</CardTitle>
+                <CardDescription style={{ color: '#8B8580' }}>
                   按平均得分从高到低排序，点击岗位行可查看每位评估人的详细评分
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 {rankings.length === 0 ? (
-                  <div className="text-center py-12">
-                    <p className="text-gray-500 dark:text-gray-400">
-                      暂无数据，请先在评分页面完成评分
-                    </p>
+                  <div className="text-center py-16">
+                    <BarChart3 className="h-12 w-12 mx-auto mb-4" style={{ color: '#E8E3DD' }} />
+                    <p style={{ color: '#8B8580' }}>暂无数据，请先在评分页面完成评分</p>
                   </div>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     {positionDetails.map((position, index) => (
-                      <div key={position.positionId} className="border rounded-lg overflow-hidden">
-                        {/* 汇总行 */}
+                      <div key={position.positionId} className="border rounded-lg overflow-hidden" style={{ borderColor: '#E8E3DD' }}>
                         <div
-                          className={`flex items-center px-4 py-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 ${
-                            index < 3 ? 'bg-yellow-50 dark:bg-yellow-900/20' : ''
-                          }`}
+                          className="flex items-center px-4 py-3 cursor-pointer hover:bg-[#FAF8F5] transition-colors"
                           onClick={() => togglePositionExpand(position.positionId)}
                         >
-                          {/* 排名 */}
-                          <div className="w-16 flex-shrink-0">
-                            <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-semibold ${
-                              index === 0
-                                ? 'bg-yellow-500 text-white'
-                                : index === 1
-                                ? 'bg-gray-400 text-white'
-                                : index === 2
-                                ? 'bg-orange-500 text-white'
-                                : 'bg-gray-200 text-gray-700'
-                            }`}>
+                          <div className="w-12 flex-shrink-0">
+                            <span
+                              className="inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-semibold"
+                              style={{
+                                backgroundColor: index === 0 ? '#C8956C' : index === 1 ? '#B8A99A' : index === 2 ? '#D4A574' : '#F5F2EE',
+                                color: index < 3 ? '#FFFFFF' : '#8B8580',
+                              }}
+                            >
                               {index + 1}
                             </span>
                           </div>
-                          {/* 公司 */}
-                          <div className="w-40 flex-shrink-0 truncate text-sm">{position.companyName}</div>
-                          {/* 部门 */}
-                          <div className="w-24 flex-shrink-0 truncate text-sm">{position.department}</div>
-                          {/* 岗位 */}
-                      <div className="flex-1 font-medium">{position.positionName}</div>
-                      {/* 平均得分 */}
-                      <div className="w-20 text-right font-semibold text-lg">{position.averageScore}</div>
-                      {/* 评分人数 */}
-                      <div className="w-20 text-right text-sm text-gray-500">{position.evaluationCount}人</div>
-                      {/* 评估人 */}
-                      <div className="w-32 text-right text-sm text-gray-500 truncate">
-                        {position.evaluators.join(', ')}
-                      </div>
-                      {/* 展开图标 */}
-                      <div className="w-10 flex justify-center">
-                        {position.evaluationCount > 0 && (
-                          position.expanded 
-                            ? <ChevronUp className="h-5 w-5 text-gray-400" />
-                            : <ChevronDown className="h-5 w-5 text-gray-400" />
+                          <div className="w-36 flex-shrink-0 truncate text-sm font-medium" style={{ color: '#2C2825' }}>{position.companyName}</div>
+                          <div className="w-20 flex-shrink-0 truncate text-sm" style={{ color: '#8B8580' }}>{position.department}</div>
+                          <div className="flex-1 text-sm font-medium" style={{ color: '#2C2825' }}>{position.positionName}</div>
+                          <div className="w-20 text-right font-semibold text-base" style={{ color: '#3D3630', fontFamily: "'JetBrains Mono', monospace" }}>{position.averageScore}</div>
+                          <div className="w-16 text-right text-xs" style={{ color: '#8B8580' }}>{position.evaluationCount}人</div>
+                          <div className="w-28 text-right text-xs truncate" style={{ color: '#8B8580' }}>{position.evaluators.join(', ')}</div>
+                          <div className="w-8 flex justify-center">
+                            {position.evaluationCount > 0 && (
+                              position.expanded
+                                ? <ChevronUp className="h-4 w-4" style={{ color: '#8B8580' }} />
+                                : <ChevronDown className="h-4 w-4" style={{ color: '#8B8580' }} />
+                            )}
+                          </div>
+                        </div>
+
+                        {position.expanded && position.detailedScores.length > 0 && (
+                          <div className="border-t px-4 py-3" style={{ backgroundColor: '#FAF8F5', borderColor: '#E8E3DD' }}>
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-sm">
+                                <thead>
+                                  <tr style={{ borderColor: '#E8E3DD' }} className="border-b">
+                                    <th className="text-left py-2 px-3 font-medium text-xs" style={{ color: '#8B8580' }}>评估人</th>
+                                    {Object.entries(dimensionNames).map(([key, name]) => (
+                                      <th key={key} className="text-center py-2 px-1.5 font-medium text-xs whitespace-nowrap" style={{ color: '#8B8580' }}>{name}</th>
+                                    ))}
+                                    <th className="text-center py-2 px-3 font-medium text-xs" style={{ color: '#8B8580' }}>总分</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {position.detailedScores.map((score, sIndex) => (
+                                    <tr key={score.id || sIndex} className="border-b last:border-0" style={{ borderColor: '#F5F2EE' }}>
+                                      <td className="py-2 px-3 font-medium text-xs" style={{ color: '#2C2825' }}>{score.evaluatorName}</td>
+                                      {Object.keys(dimensionNames).map((key) => (
+                                        <td key={key} className="text-center py-2 px-1.5">
+                                          <span
+                                            className="inline-flex items-center justify-center w-6 h-6 rounded text-xs font-medium"
+                                            style={{
+                                              backgroundColor: score.scores[key] >= 4 ? '#F0F7F0' : score.scores[key] >= 3 ? '#F5F2EE' : score.scores[key] >= 2 ? '#FFF8F0' : '#FFF0F0',
+                                              color: score.scores[key] >= 4 ? '#5B8C5A' : score.scores[key] >= 3 ? '#3D3630' : score.scores[key] >= 2 ? '#D4954B' : '#CC5555',
+                                            }}
+                                          >
+                                            {score.scores[key]}
+                                          </span>
+                                        </td>
+                                      ))}
+                                      <td className="text-center py-2 px-3 font-semibold text-xs" style={{ color: '#C8956C', fontFamily: "'JetBrains Mono', monospace" }}>{score.totalScore}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
                         )}
                       </div>
-                    </div>
-
-                    {/* 详细评分 */}
-                    {position.expanded && position.detailedScores.length > 0 && (
-                      <div className="bg-gray-50 dark:bg-gray-800/30 p-4 border-t">
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-sm">
-                            <thead>
-                              <tr className="border-b">
-                                <th className="text-left py-2 px-3 font-medium">评估人</th>
-                                {Object.entries(dimensionNames).map(([key, name]) => (
-                                  <th key={key} className="text-center py-2 px-2 font-medium whitespace-nowrap">{name}</th>
-                                ))}
-                                <th className="text-center py-2 px-3 font-medium">总分</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {position.detailedScores.map((score, sIndex) => (
-                                <tr key={score.id || sIndex} className="border-b last:border-0">
-                                  <td className="py-2 px-3 font-medium">{score.evaluatorName}</td>
-                                  {Object.keys(dimensionNames).map(key => (
-                                    <td key={key} className="text-center py-2 px-2">
-                                      <span className={`inline-block w-6 h-6 rounded text-xs leading-6 ${
-                                        score.scores[key] >= 4 ? 'bg-green-100 text-green-800' :
-                                        score.scores[key] >= 3 ? 'bg-blue-100 text-blue-800' :
-                                        score.scores[key] >= 2 ? 'bg-yellow-100 text-yellow-800' :
-                                        'bg-red-100 text-red-800'
-                                      }`}>
-                                        {score.scores[key]}
-                                      </span>
-                                    </td>
-                                  ))}
-                                  <td className="text-center py-2 px-3 font-bold text-blue-600">{score.totalScore}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    )}
+                    ))}
                   </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
-          {/* 评分解锁 Tab */}
-          <TabsContent value="unlock">
-            <Card>
+          {/* Unlock Tab */}
+          <TabsContent value="unlock" className="mt-6">
+            <Card className="border-[#E8E3DD] shadow-none">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Lock className="h-5 w-5" />
+                <CardTitle className="flex items-center gap-2" style={{ color: '#2C2825' }}>
+                  <Lock className="h-5 w-5" style={{ color: '#C8956C' }} />
                   评分解锁管理
                 </CardTitle>
-                <CardDescription>
+                <CardDescription style={{ color: '#8B8580' }}>
                   解锁已提交的评分，允许评估人修改数据
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 {submittedEvaluators.length === 0 ? (
-                  <div className="text-center py-12">
-                    <Lock className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500 dark:text-gray-400">
-                      暂无已提交的评分
-                    </p>
+                  <div className="text-center py-16">
+                    <Lock className="h-12 w-12 mx-auto mb-4" style={{ color: '#E8E3DD' }} />
+                    <p style={{ color: '#8B8580' }}>暂无已提交的评分</p>
                   </div>
                 ) : (
                   <>
-                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                      <p className="text-sm text-blue-800 dark:text-blue-200">
-                        💡 以下评估人已提交评分并锁定，点击"解锁"按钮可允许其修改评分数据
-                      </p>
+                    <div className="rounded-lg p-4 text-sm" style={{ backgroundColor: '#FFF8F0', border: '1px solid #F0E0D0', color: '#8B6914' }}>
+                      以下评估人已提交评分并锁定，点击「解锁」按钮可允许其修改评分数据
                     </div>
-
                     <div className="grid gap-3">
                       {submittedEvaluators.map((evaluator) => (
-                        <div 
+                        <div
                           key={evaluator.name}
-                          className="flex items-center justify-between p-4 border rounded-lg bg-white dark:bg-gray-800"
+                          className="flex items-center justify-between p-4 border rounded-lg"
+                          style={{ borderColor: '#E8E3DD', backgroundColor: '#FFFFFF' }}
                         >
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                              <User className="h-5 w-5 text-green-600 dark:text-green-400" />
+                            <div className="w-9 h-9 rounded-full flex items-center justify-center" style={{ backgroundColor: '#F0F7F0' }}>
+                              <User className="h-4 w-4" style={{ color: '#5B8C5A' }} />
                             </div>
                             <div>
-                              <div className="font-medium text-gray-900 dark:text-white">
-                                {evaluator.name}
-                              </div>
-                              <div className="text-sm text-gray-500 dark:text-gray-400">
-                                已提交 {evaluator.count} 个岗位评分
-                              </div>
+                              <div className="font-medium text-sm" style={{ color: '#2C2825' }}>{evaluator.name}</div>
+                              <div className="text-xs" style={{ color: '#8B8580' }}>已提交 {evaluator.count} 个岗位评分</div>
                             </div>
                           </div>
                           <Button
                             variant="outline"
-                            className="border-amber-300 text-amber-600 hover:bg-amber-50"
+                            size="sm"
+                            className="border-[#E8D5C4] text-[#D4954B] hover:bg-[#FFF8F0]"
                             onClick={() => {
                               setSelectedEvaluator(evaluator.name);
                               setShowUnlockDialog(true);
                             }}
                           >
-                            <Unlock className="h-4 w-4 mr-2" />
+                            <Unlock className="h-3.5 w-3.5 mr-1.5" />
                             解锁
                           </Button>
                         </div>
@@ -875,58 +915,58 @@ export default function AdminPage() {
             </Card>
           </TabsContent>
 
-          {/* 操作日志 Tab */}
-          <TabsContent value="logs">
-            <Card>
+          {/* Logs Tab */}
+          <TabsContent value="logs" className="mt-6">
+            <Card className="border-[#E8E3DD] shadow-none">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <History className="h-5 w-5" />
+                <CardTitle className="flex items-center gap-2" style={{ color: '#2C2825' }}>
+                  <History className="h-5 w-5" style={{ color: '#C8956C' }} />
                   操作日志
                 </CardTitle>
-                <CardDescription>
-                  记录所有解锁和修改操作
+                <CardDescription style={{ color: '#8B8580' }}>
+                  记录所有解锁和修改操作，用于审计追溯
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 {operationLogs.length === 0 ? (
-                  <div className="text-center py-12">
-                    <History className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500 dark:text-gray-400">
-                      暂无操作记录
-                    </p>
+                  <div className="text-center py-16">
+                    <History className="h-12 w-12 mx-auto mb-4" style={{ color: '#E8E3DD' }} />
+                    <p style={{ color: '#8B8580' }}>暂无操作记录</p>
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="border-b">
-                          <th className="text-left py-3 px-4 font-medium">时间</th>
-                          <th className="text-left py-3 px-4 font-medium">评估人</th>
-                          <th className="text-left py-3 px-4 font-medium">操作类型</th>
-                          <th className="text-left py-3 px-4 font-medium">岗位</th>
-                          <th className="text-left py-3 px-4 font-medium">操作人</th>
+                        <tr className="border-b" style={{ borderColor: '#E8E3DD' }}>
+                          <th className="text-left py-3 px-4 font-medium text-xs" style={{ color: '#8B8580' }}>时间</th>
+                          <th className="text-left py-3 px-4 font-medium text-xs" style={{ color: '#8B8580' }}>评估人</th>
+                          <th className="text-left py-3 px-4 font-medium text-xs" style={{ color: '#8B8580' }}>操作类型</th>
+                          <th className="text-left py-3 px-4 font-medium text-xs" style={{ color: '#8B8580' }}>岗位</th>
+                          <th className="text-left py-3 px-4 font-medium text-xs" style={{ color: '#8B8580' }}>操作人</th>
                         </tr>
                       </thead>
                       <tbody>
                         {operationLogs.map((log) => (
-                          <tr key={log.id} className="border-b last:border-0 hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                            <td className="py-3 px-4 text-gray-600 dark:text-gray-400">
+                          <tr key={log.id} className="border-b last:border-0 hover:bg-[#FAF8F5] transition-colors" style={{ borderColor: '#F5F2EE' }}>
+                            <td className="py-3 px-4 text-xs" style={{ color: '#8B8580', fontFamily: "'JetBrains Mono', monospace" }}>
                               {formatDateTime(log.created_at)}
                             </td>
-                            <td className="py-3 px-4 font-medium">{log.evaluator_name}</td>
+                            <td className="py-3 px-4 text-sm font-medium" style={{ color: '#2C2825' }}>{log.evaluator_name}</td>
                             <td className="py-3 px-4">
-                              <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
-                                log.operation_type === 'unlock_all' || log.operation_type === 'unlock_position'
-                                  ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300'
-                                  : 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
-                              }`}>
+                              <span
+                                className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
+                                style={{
+                                  backgroundColor: log.operation_type.includes('unlock') ? '#FFF8F0' : '#F0F7F0',
+                                  color: log.operation_type.includes('unlock') ? '#D4954B' : '#5B8C5A',
+                                }}
+                              >
                                 {formatOperationType(log.operation_type)}
                               </span>
                             </td>
-                            <td className="py-3 px-4 text-gray-600 dark:text-gray-400">
+                            <td className="py-3 px-4 text-sm" style={{ color: '#8B8580' }}>
                               {log.position_name || '-'}
                             </td>
-                            <td className="py-3 px-4 text-gray-600 dark:text-gray-400">
+                            <td className="py-3 px-4 text-sm" style={{ color: '#8B8580' }}>
                               {log.operator_name}
                             </td>
                           </tr>
@@ -941,57 +981,49 @@ export default function AdminPage() {
         </Tabs>
       </div>
 
-      {/* 解锁确认对话框 */}
+      {/* Unlock Confirm Dialog */}
       <Dialog open={showUnlockDialog} onOpenChange={setShowUnlockDialog}>
-        <DialogContent>
+        <DialogContent className="border-[#E8E3DD]">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-amber-600">
+            <DialogTitle className="flex items-center gap-2" style={{ color: '#D4954B' }}>
               <Unlock className="h-5 w-5" />
               解锁评分
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription style={{ color: '#8B8580' }}>
               解锁后，该评估人可以重新修改评分数据
             </DialogDescription>
           </DialogHeader>
-          <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4 my-4">
-            <p className="text-sm text-amber-800 dark:text-amber-200">
-              ⚠️ 确定要解锁 <strong>{selectedEvaluator}</strong> 的评分吗？
-            </p>
+          <div className="rounded-lg p-4 my-4 text-sm" style={{ backgroundColor: '#FFF8F0', border: '1px solid #F0E0D0', color: '#8B6914' }}>
+            确定要解锁 <strong>{selectedEvaluator}</strong> 的评分吗？
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowUnlockDialog(false)} disabled={unlocking}>
+            <Button variant="outline" onClick={() => setShowUnlockDialog(false)} disabled={unlocking} className="border-[#E8E3DD]">
               取消
             </Button>
-            <Button 
-              className="bg-amber-600 hover:bg-amber-700" 
-              onClick={handleUnlock} 
-              disabled={unlocking}
-            >
+            <Button onClick={handleUnlock} disabled={unlocking} style={{ backgroundColor: '#D4954B' }} className="hover:opacity-90 text-white">
               {unlocking ? '处理中...' : '确认解锁'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* 清空评分确认对话框 */}
+      {/* Clear Scores Dialog */}
       <Dialog open={showClearDialog} onOpenChange={setShowClearDialog}>
-        <DialogContent>
+        <DialogContent className="border-[#E8E3DD]">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-orange-600">
+            <DialogTitle className="flex items-center gap-2" style={{ color: '#D4954B' }}>
               <Trash2 className="h-5 w-5" />
               清空评分数据
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription style={{ color: '#8B8580' }}>
               此操作将删除所有评分记录和评估人数据，但保留岗位和公司信息。
             </DialogDescription>
           </DialogHeader>
-          <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4 my-4">
-            <p className="text-sm text-orange-800 dark:text-orange-200">
-              ⚠️ 此操作不可恢复，请确认是否继续？
-            </p>
+          <div className="rounded-lg p-4 my-4 text-sm" style={{ backgroundColor: '#FFF8F0', border: '1px solid #F0E0D0', color: '#8B6914' }}>
+            此操作不可恢复，请确认是否继续？
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowClearDialog(false)} disabled={isOperating}>
+            <Button variant="outline" onClick={() => setShowClearDialog(false)} disabled={isOperating} className="border-[#E8E3DD]">
               取消
             </Button>
             <Button variant="destructive" onClick={handleClearScores} disabled={isOperating}>
@@ -1001,25 +1033,23 @@ export default function AdminPage() {
         </DialogContent>
       </Dialog>
 
-      {/* 完全重置确认对话框 */}
+      {/* Full Reset Dialog */}
       <Dialog open={showResetDialog} onOpenChange={setShowResetDialog}>
-        <DialogContent>
+        <DialogContent className="border-[#E8E3DD]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-red-600">
               <AlertTriangle className="h-5 w-5" />
               完全重置系统
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription style={{ color: '#8B8580' }}>
               此操作将删除所有数据，包括评分记录、评估人、岗位和公司信息。
             </DialogDescription>
           </DialogHeader>
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 my-4">
-            <p className="text-sm text-red-800 dark:text-red-200">
-              ⚠️ 危险操作！此操作将完全清空系统，所有数据将无法恢复！
-            </p>
+          <div className="rounded-lg p-4 my-4 text-sm" style={{ backgroundColor: '#FFF0F0', border: '1px solid #F0D0D0', color: '#CC5555' }}>
+            危险操作！此操作将完全清空系统，所有数据将无法恢复！
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowResetDialog(false)} disabled={isOperating}>
+            <Button variant="outline" onClick={() => setShowResetDialog(false)} disabled={isOperating} className="border-[#E8E3DD]">
               取消
             </Button>
             <Button variant="destructive" onClick={handleFullReset} disabled={isOperating}>
@@ -1029,19 +1059,19 @@ export default function AdminPage() {
         </DialogContent>
       </Dialog>
 
-      {/* 导入数据对话框 */}
+      {/* Import Dialog */}
       <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto border-[#E8E3DD]">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-green-600">
+            <DialogTitle className="flex items-center gap-2" style={{ color: '#5B8C5A' }}>
               <Upload className="h-5 w-5" />
               导入岗位数据
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription style={{ color: '#8B8580' }}>
               支持 Excel 文件 (.xlsx, .xls)，用于初始化或更新岗位数据
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4">
             <input
               ref={fileInputRef}
@@ -1053,13 +1083,13 @@ export default function AdminPage() {
             />
             <Button
               variant="outline"
-              className="w-full"
+              className="w-full border-[#E8E3DD] text-[#3D3630] hover:bg-[#F5F2EE]"
               onClick={() => fileInputRef.current?.click()}
               disabled={isPreviewing || isConfirming}
             >
               {isPreviewing ? (
                 <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 mr-2"></div>
+                  <div className="w-4 h-4 border-2 rounded-full animate-spin mr-2" style={{ borderColor: '#E8E3DD', borderTopColor: '#C8956C' }} />
                   识读中...
                 </>
               ) : (
@@ -1070,34 +1100,33 @@ export default function AdminPage() {
               )}
             </Button>
 
-            {/* 步骤指示器 */}
-            <div className="flex items-center gap-2 text-xs text-gray-500">
-              <span className={`px-2 py-1 rounded ${previewResult ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
-                {previewResult ? '✓' : '1.'} 选择文件
+            {/* Step Indicator */}
+            <div className="flex items-center gap-2 text-xs" style={{ color: '#8B8580' }}>
+              <span className="px-2 py-1 rounded" style={{ backgroundColor: previewResult ? '#F0F7F0' : '#F5F2EE', color: previewResult ? '#5B8C5A' : '#3D3630' }}>
+                {previewResult ? '\u2713' : '1.'} 选择文件
               </span>
-              <span className="text-gray-300">→</span>
-              <span className={`px-2 py-1 rounded ${importResult ? 'bg-green-100 text-green-700' : previewResult ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-400'}`}>
-                {importResult ? '✓' : '2.'} 确认导入
+              <span style={{ color: '#E8E3DD' }}>&rarr;</span>
+              <span className="px-2 py-1 rounded" style={{
+                backgroundColor: importResult ? '#F0F7F0' : previewResult ? '#F5F2EE' : '#F5F2EE',
+                color: importResult ? '#5B8C5A' : previewResult ? '#3D3630' : '#C0B8B0',
+              }}>
+                {importResult ? '\u2713' : '2.'} 确认导入
               </span>
             </div>
-            
-            {/* 预览结果 */}
+
+            {/* Preview Result */}
             {previewResult && !importResult && (
               <div className="space-y-3">
-                {/* 总体结果 */}
-                <div className={`flex items-start gap-2 p-3 rounded-lg text-sm ${
-                  previewResult.success
-                    ? previewResult.errors.length > 0
-                      ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-200'
-                      : 'bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-200'
-                    : 'bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200'
-                }`}>
+                <div className="flex items-start gap-2 p-3 rounded-lg text-sm" style={{
+                  backgroundColor: previewResult.success
+                    ? previewResult.errors.length > 0 ? '#FFF8F0' : '#F0F7F0'
+                    : '#FFF0F0',
+                  color: previewResult.success
+                    ? previewResult.errors.length > 0 ? '#8B6914' : '#3D5A3D'
+                    : '#CC5555',
+                }}>
                   {previewResult.success ? (
-                    previewResult.errors.length > 0 ? (
-                      <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
-                    ) : (
-                      <CheckCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
-                    )
+                    previewResult.errors.length > 0 ? <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" /> : <CheckCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
                   ) : (
                     <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
                   )}
@@ -1106,20 +1135,16 @@ export default function AdminPage() {
                   </div>
                 </div>
 
-                {/* 识别到的公司 */}
                 {previewResult.detectedCompanies.length > 0 && (
-                  <div className="border border-green-200 dark:border-green-800 rounded-lg overflow-hidden">
-                    <div className="bg-green-50 dark:bg-green-900/30 px-3 py-2">
-                      <span className="text-sm text-green-700 dark:text-green-300 font-medium">
+                  <div className="border rounded-lg overflow-hidden" style={{ borderColor: '#D0E8D0' }}>
+                    <div className="px-3 py-2" style={{ backgroundColor: '#F0F7F0' }}>
+                      <span className="text-sm font-medium" style={{ color: '#3D5A3D' }}>
                         识别到 {previewResult.detectedCompanies.length} 个公司/中心
                       </span>
                     </div>
                     <div className="p-2 flex flex-wrap gap-1">
                       {previewResult.detectedCompanies.map((company, index) => (
-                        <span 
-                          key={index}
-                          className="text-xs px-2 py-1 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 rounded"
-                        >
+                        <span key={index} className="text-xs px-2 py-1 rounded" style={{ backgroundColor: '#F0F7F0', color: '#3D5A3D' }}>
                           {company}
                         </span>
                       ))}
@@ -1127,50 +1152,45 @@ export default function AdminPage() {
                   </div>
                 )}
 
-                {/* 统计信息 */}
                 <div className="grid grid-cols-3 gap-2 text-center">
-                  <div className="p-2 bg-gray-50 dark:bg-gray-800 rounded">
-                    <div className="text-lg font-bold text-gray-700 dark:text-gray-200">{previewResult.totalPositions}</div>
-                    <div className="text-xs text-gray-500">总行数</div>
+                  <div className="p-2 rounded" style={{ backgroundColor: '#F5F2EE' }}>
+                    <div className="text-lg font-bold" style={{ color: '#3D3630', fontFamily: "'JetBrains Mono', monospace" }}>{previewResult.totalPositions}</div>
+                    <div className="text-xs" style={{ color: '#8B8580' }}>总行数</div>
                   </div>
-                  <div className="p-2 bg-green-50 dark:bg-green-900/30 rounded">
-                    <div className="text-lg font-bold text-green-700 dark:text-green-300">{previewResult.validPositions}</div>
-                    <div className="text-xs text-green-600 dark:text-green-400">有效岗位</div>
+                  <div className="p-2 rounded" style={{ backgroundColor: '#F0F7F0' }}>
+                    <div className="text-lg font-bold" style={{ color: '#5B8C5A', fontFamily: "'JetBrains Mono', monospace" }}>{previewResult.validPositions}</div>
+                    <div className="text-xs" style={{ color: '#5B8C5A' }}>有效岗位</div>
                   </div>
-                  <div className="p-2 bg-red-50 dark:bg-red-900/30 rounded">
-                    <div className="text-lg font-bold text-red-700 dark:text-red-300">{previewResult.invalidPositions}</div>
-                    <div className="text-xs text-red-600 dark:text-red-400">错误行数</div>
+                  <div className="p-2 rounded" style={{ backgroundColor: '#FFF0F0' }}>
+                    <div className="text-lg font-bold" style={{ color: '#CC5555', fontFamily: "'JetBrains Mono', monospace" }}>{previewResult.invalidPositions}</div>
+                    <div className="text-xs" style={{ color: '#CC5555' }}>错误行数</div>
                   </div>
                 </div>
 
-                {/* 岗位列表预览 */}
                 {previewResult.positions.length > 0 && (
-                  <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-                    <div className="bg-gray-50 dark:bg-gray-800 px-3 py-2 flex items-center justify-between">
-                      <span className="text-sm text-gray-700 dark:text-gray-300 font-medium">
+                  <div className="border rounded-lg overflow-hidden" style={{ borderColor: '#E8E3DD' }}>
+                    <div className="px-3 py-2 flex items-center justify-between" style={{ backgroundColor: '#F5F2EE' }}>
+                      <span className="text-sm font-medium" style={{ color: '#3D3630' }}>
                         有效岗位列表（共 {previewResult.positions.length} 个）
                       </span>
                     </div>
                     <ScrollArea className="h-40">
                       <div className="p-2 space-y-1">
                         {previewResult.positions.slice(0, 50).map((pos, index) => (
-                          <div 
-                            key={index}
-                            className="text-xs p-2 bg-white dark:bg-gray-900 rounded border border-gray-100 dark:border-gray-700"
-                          >
-                            <span className="font-medium text-gray-700 dark:text-gray-300">
-                              【{pos.companyName}】
+                          <div key={index} className="text-xs p-2 rounded border" style={{ borderColor: '#F5F2EE' }}>
+                            <span className="font-medium" style={{ color: '#3D3630' }}>
+                              [{pos.companyName}]
                             </span>
-                            <span className="text-gray-500 dark:text-gray-400 ml-1">
+                            <span style={{ color: '#8B8580' }} className="ml-1">
                               {pos.department ? `${pos.department} - ` : ''}
                             </span>
-                            <span className="text-green-600 dark:text-green-400">
+                            <span style={{ color: '#5B8C5A' }}>
                               {pos.positionName}
                             </span>
                           </div>
                         ))}
                         {previewResult.positions.length > 50 && (
-                          <div className="text-xs text-center text-gray-400 py-2">
+                          <div className="text-xs text-center py-2" style={{ color: '#C0B8B0' }}>
                             还有 {previewResult.positions.length - 50} 个岗位未显示...
                           </div>
                         )}
@@ -1179,20 +1199,14 @@ export default function AdminPage() {
                   </div>
                 )}
 
-                {/* 错误列表 */}
                 {previewResult.errors.length > 0 && (
-                  <div className="border border-red-200 dark:border-red-800 rounded-lg overflow-hidden">
-                    <div className="bg-red-50 dark:bg-red-900/30 px-3 py-2 flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-sm text-red-700 dark:text-red-300">
+                  <div className="border rounded-lg overflow-hidden" style={{ borderColor: '#F0D0D0' }}>
+                    <div className="px-3 py-2 flex items-center justify-between" style={{ backgroundColor: '#FFF0F0' }}>
+                      <div className="flex items-center gap-2 text-sm" style={{ color: '#CC5555' }}>
                         <FileWarning className="h-4 w-4" />
                         <span className="font-medium">发现 {previewResult.errors.length} 个错误</span>
                       </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={downloadPreviewErrorReport}
-                        className="h-7 text-xs"
-                      >
+                      <Button variant="outline" size="sm" onClick={downloadPreviewErrorReport} className="h-7 text-xs border-[#E8E3DD]">
                         <Download className="h-3 w-3 mr-1" />
                         下载错误报告
                       </Button>
@@ -1200,25 +1214,14 @@ export default function AdminPage() {
                     <ScrollArea className="h-32">
                       <div className="p-2 space-y-1">
                         {previewResult.errors.map((error, index) => (
-                          <div 
-                            key={index}
-                            className="text-xs p-2 bg-white dark:bg-gray-800 rounded border border-gray-100 dark:border-gray-700"
-                          >
+                          <div key={index} className="text-xs p-2 rounded border" style={{ borderColor: '#F5F2EE' }}>
                             <div className="flex items-start gap-2">
-                              <span className="text-red-500 font-bold">✕</span>
+                              <span style={{ color: '#CC5555' }}>&#10005;</span>
                               <div>
-                                <span className="font-medium text-gray-700 dark:text-gray-300">
-                                  【{error.companyName}】
-                                </span>
-                                <span className="text-gray-600 dark:text-gray-400">
-                                  第{error.rowIndex}行：
-                                </span>
-                                <span className="text-red-600 dark:text-red-400">
-                                  {error.errorType}
-                                </span>
-                                <span className="text-gray-500 dark:text-gray-400 ml-1">
-                                  - {error.message}
-                                </span>
+                                <span className="font-medium" style={{ color: '#3D3630' }}>[{error.companyName}]</span>
+                                <span style={{ color: '#8B8580' }}> 第{error.rowIndex}行：</span>
+                                <span style={{ color: '#CC5555' }}>{error.errorType}</span>
+                                <span style={{ color: '#8B8580' }} className="ml-1">- {error.message}</span>
                               </div>
                             </div>
                           </div>
@@ -1228,16 +1231,16 @@ export default function AdminPage() {
                   </div>
                 )}
 
-                {/* 确认导入按钮 */}
                 {previewResult.canImport && (
                   <Button
-                    className="w-full bg-green-600 hover:bg-green-700"
+                    className="w-full text-white"
+                    style={{ backgroundColor: '#5B8C5A' }}
                     onClick={handleConfirmImport}
                     disabled={isConfirming}
                   >
                     {isConfirming ? (
                       <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        <div className="w-4 h-4 border-2 rounded-full animate-spin mr-2" style={{ borderColor: 'rgba(255,255,255,0.3)', borderTopColor: '#FFFFFF' }} />
                         导入中...
                       </>
                     ) : (
@@ -1251,23 +1254,19 @@ export default function AdminPage() {
               </div>
             )}
 
-            {/* 导入结果 */}
+            {/* Import Result */}
             {importResult && (
               <div className="space-y-3">
-                {/* 总体结果 */}
-                <div className={`flex items-start gap-2 p-3 rounded-lg text-sm ${
-                  importResult.success
-                    ? importResult.errorCount > 0
-                      ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-200'
-                      : 'bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-200'
-                    : 'bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200'
-                }`}>
+                <div className="flex items-start gap-2 p-3 rounded-lg text-sm" style={{
+                  backgroundColor: importResult.success
+                    ? importResult.errorCount > 0 ? '#FFF8F0' : '#F0F7F0'
+                    : '#FFF0F0',
+                  color: importResult.success
+                    ? importResult.errorCount > 0 ? '#8B6914' : '#3D5A3D'
+                    : '#CC5555',
+                }}>
                   {importResult.success ? (
-                    importResult.errorCount > 0 ? (
-                      <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
-                    ) : (
-                      <CheckCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
-                    )
+                    importResult.errorCount > 0 ? <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" /> : <CheckCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
                   ) : (
                     <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
                   )}
@@ -1277,52 +1276,35 @@ export default function AdminPage() {
                       <span>导入：{importResult.importedCount} 个</span>
                       <span>跳过：{importResult.skippedCount} 行</span>
                       {importResult.errorCount > 0 && (
-                        <span className="text-red-600 dark:text-red-400 font-medium">错误：{importResult.errorCount} 个</span>
+                        <span className="font-medium" style={{ color: '#CC5555' }}>错误：{importResult.errorCount} 个</span>
                       )}
                     </div>
                   </div>
                 </div>
 
-                {/* 错误列表 */}
                 {importResult.errors && importResult.errors.length > 0 && (
-                  <div className="border border-red-200 dark:border-red-800 rounded-lg overflow-hidden">
-                    <div className="bg-red-50 dark:bg-red-900/30 px-3 py-2 flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-sm text-red-700 dark:text-red-300">
+                  <div className="border rounded-lg overflow-hidden" style={{ borderColor: '#F0D0D0' }}>
+                    <div className="px-3 py-2 flex items-center justify-between" style={{ backgroundColor: '#FFF0F0' }}>
+                      <div className="flex items-center gap-2 text-sm" style={{ color: '#CC5555' }}>
                         <FileWarning className="h-4 w-4" />
                         <span className="font-medium">发现 {importResult.errors.length} 个错误</span>
                       </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={downloadImportErrorReport}
-                        className="h-7 text-xs"
-                      >
+                      <Button variant="outline" size="sm" onClick={downloadImportErrorReport} className="h-7 text-xs border-[#E8E3DD]">
                         <Download className="h-3 w-3 mr-1" />
                         下载错误报告
                       </Button>
                     </div>
-                    <ScrollArea className="h-48">
+                    <ScrollArea className="h-32">
                       <div className="p-2 space-y-1">
                         {importResult.errors.map((error, index) => (
-                          <div 
-                            key={index}
-                            className="text-xs p-2 bg-white dark:bg-gray-800 rounded border border-gray-100 dark:border-gray-700"
-                          >
+                          <div key={index} className="text-xs p-2 rounded border" style={{ borderColor: '#F5F2EE' }}>
                             <div className="flex items-start gap-2">
-                              <span className="text-red-500 font-bold">✕</span>
+                              <span style={{ color: '#CC5555' }}>&#10005;</span>
                               <div>
-                                <span className="font-medium text-gray-700 dark:text-gray-300">
-                                  【{error.companyName}】
-                                </span>
-                                <span className="text-gray-600 dark:text-gray-400">
-                                  第{error.rowIndex}行：
-                                </span>
-                                <span className="text-red-600 dark:text-red-400">
-                                  {error.errorType}
-                                </span>
-                                <span className="text-gray-500 dark:text-gray-400 ml-1">
-                                  - {error.message}
-                                </span>
+                                <span className="font-medium" style={{ color: '#3D3630' }}>[{error.companyName}]</span>
+                                <span style={{ color: '#8B8580' }}> 第{error.rowIndex}行：</span>
+                                <span style={{ color: '#CC5555' }}>{error.errorType}</span>
+                                <span style={{ color: '#8B8580' }} className="ml-1">- {error.message}</span>
                               </div>
                             </div>
                           </div>
@@ -1331,80 +1313,9 @@ export default function AdminPage() {
                     </ScrollArea>
                   </div>
                 )}
-
-                {/* 重新导入按钮 */}
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => {
-                    setPreviewResult(null);
-                    setImportResult(null);
-                  }}
-                >
-                  <Upload className="h-4 w-4 mr-2" />
-                  导入新文件
-                </Button>
-              </div>
-            )}
-
-            {/* 格式说明 - 只在没有预览结果时显示 */}
-            {!previewResult && !importResult && (
-              <div className="text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 rounded p-3 space-y-2">
-                <p className="font-medium">📋 Excel 文件格式要求（严格遵守）：</p>
-                
-                <div className="border-t border-gray-200 dark:border-gray-700 pt-2 mt-2">
-                  <p className="font-medium text-gray-700 dark:text-gray-300">一、公司/中心名称（自动识读）</p>
-                  <div className="ml-4 mt-1 bg-white dark:bg-gray-900 rounded p-2 font-mono text-[11px]">
-                    <div className="text-blue-600">✓ 系统自动识读，无需预设公司列表</div>
-                    <div className="text-green-600">✓ 支持任意公司/中心名称</div>
-                    <div className="text-amber-600">⚠️ 名称必须填写在第1行A列</div>
-                  </div>
-                  <p className="text-gray-500 dark:text-gray-400 mt-1 text-[10px]">示例：集团、XX公司、XX中心、XX部门等</p>
-                </div>
-                
-                <div className="border-t border-gray-200 dark:border-gray-700 pt-2">
-                  <p className="font-medium text-gray-700 dark:text-gray-300">二、行结构（必须严格遵守）</p>
-                  <div className="ml-4 mt-1 bg-white dark:bg-gray-900 rounded p-2 font-mono text-[11px]">
-                    <div><span className="text-blue-600">第1行 A列：</span><span className="text-green-600">公司/中心名称</span>（系统自动识读）</div>
-                    <div><span className="text-gray-400">第2-4行：</span>可留空或填写其他信息（系统会跳过）</div>
-                    <div><span className="text-blue-600">第5行：</span>列标题（部门、岗位名称...）</div>
-                    <div><span className="text-blue-600">第6行开始：</span><span className="text-green-600">岗位数据（每行一个岗位）</span></div>
-                  </div>
-                </div>
-                
-                <div className="border-t border-gray-200 dark:border-gray-700 pt-2">
-                  <p className="font-medium text-gray-700 dark:text-gray-300">三、列结构（必须严格遵守）</p>
-                  <div className="ml-4 mt-1 bg-white dark:bg-gray-900 rounded p-2 font-mono text-[11px]">
-                    <div><span className="text-blue-600">A列：</span>序号或留空</div>
-                    <div><span className="text-blue-600">B列：</span><span className="text-green-600">部门名称</span>（可留空，无部门填"无"）</div>
-                    <div><span className="text-blue-600">C列：</span><span className="text-red-600">岗位名称</span>（必填，不能为空）</div>
-                    <div><span className="text-gray-400">D列及之后：</span>评分维度数据（导入时忽略）</div>
-                  </div>
-                </div>
-                
-                <div className="border-t border-gray-200 dark:border-gray-700 pt-2">
-                  <p className="font-medium text-amber-600 dark:text-amber-400">⚠️ 常见错误</p>
-                  <ul className="space-y-0.5 ml-4 mt-1 text-amber-600 dark:text-amber-400">
-                    <li>• 公司/中心名称不在第1行A列</li>
-                    <li>• 第1行A列为空</li>
-                    <li>• 岗位数据从第5行开始（应从第6行开始）</li>
-                    <li>• 使用合并单元格导致解析错位</li>
-                    <li>• 岗位名称列（C列）为空</li>
-                  </ul>
-                </div>
               </div>
             )}
           </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => {
-              setShowImportDialog(false);
-              setPreviewResult(null);
-              setImportResult(null);
-            }}>
-              关闭
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

@@ -23,27 +23,27 @@ interface Position {
 // 骨架屏组件
 function SkeletonRow() {
   return (
-    <tr className="border-b border-gray-200 dark:border-gray-600 animate-pulse">
+    <tr className="border-b border-[#E8E3DD] animate-pulse">
       <td 
-        className="border-r border-gray-200 dark:border-gray-600 px-2 py-2 bg-gray-100 dark:bg-gray-700"
+        className="border-r border-[#E8E3DD] px-2 py-2 bg-[#FAF8F5]"
         style={{ position: 'sticky', left: 0, zIndex: 25, width: '100px', minWidth: '100px' }}
       >
-        <div className="h-3 bg-gray-200 dark:bg-gray-600 rounded w-16"></div>
+        <div className="h-3 bg-[#E8E3DD] rounded w-16"></div>
       </td>
       <td 
-        className="border-r border-gray-200 dark:border-gray-600 px-2 py-2 bg-gray-100 dark:bg-gray-700"
+        className="border-r border-[#E8E3DD] px-2 py-2 bg-[#FAF8F5]"
         style={{ position: 'sticky', left: '100px', zIndex: 25, width: '70px', minWidth: '70px' }}
       >
         <div className="flex flex-col gap-1">
-          <div className="h-3 bg-gray-200 dark:bg-gray-600 rounded w-12"></div>
-          <div className="h-2 bg-gray-200 dark:bg-gray-600 rounded w-8"></div>
+          <div className="h-3 bg-[#E8E3DD] rounded w-12"></div>
+          <div className="h-2 bg-[#E8E3DD] rounded w-8"></div>
         </div>
       </td>
       {Array.from({ length: 14 }).map((_, i) => (
-        <td key={i} className="border-r border-gray-200 dark:border-gray-600 px-0.5 py-2 bg-gray-50 dark:bg-gray-800">
+        <td key={i} className="border-r border-[#E8E3DD] px-0.5 py-2 bg-[#FAF8F5]">
           <div className="flex justify-center items-center gap-0.5">
             {Array.from({ length: 4 }).map((_, j) => (
-              <div key={j} className="h-4 w-4 bg-gray-200 dark:bg-gray-600 rounded-full"></div>
+              <div key={j} className="h-4 w-4 bg-[#E8E3DD] rounded-full"></div>
             ))}
           </div>
         </td>
@@ -482,51 +482,23 @@ export default function EvaluationPage() {
     return !positionScores[fieldName] || positionScores[fieldName] === 0;
   };
 
-  // 简化公司名称
+  // 通用公司名截断（超过6字截断）
   const getShortCompanyName = (fullCompanyName: string): string => {
-    if (fullCompanyName === '集团') return '集团';
-    if (fullCompanyName.includes('工程建设')) return '工程中心';
-    if (fullCompanyName.includes('贸易')) return '贸易中心';
-    if (fullCompanyName.includes('物业服务')) return '物业中心';
-    if (fullCompanyName.includes('文化旅游')) return '文旅中心';
-    if (fullCompanyName.includes('同建')) return '同建建筑';
-    if (fullCompanyName.includes('水务')) return '高唐水务';
-    return fullCompanyName;
+    if (fullCompanyName.length <= 6) return fullCompanyName;
+    return fullCompanyName.slice(0, 6) + '…';
   };
 
-  // 简化部门名称
+  // 通用部门名截断（超过4字截断）
   const getShortDeptName = (deptName: string): string => {
-    const deptMap: Record<string, string> = {
-      '安全环保部': '安环部',
-      '成本风控部': '成本部',
-      '商务合约部': '商务合约部',
-      '工程管理部': '工程部',
-      '质量技术部': '质技部',
-      '综合管理部': '综合部',
-      '财务管理部': '财务部',
-      '人力资源部': '人资部',
-      '行政办公室': '办公室',
-      '战略发展部': '战略部',
-      '审计法务部': '审计法务部',
-      '党群工作部': '党群部',
-      '技术信息部': '技术部',
-      '经营管理部': '经营部',
-      '市场营销部': '营销部',
-      '物业管理部': '物业部',
-      '客户服务部': '客服部',
-      '工程维修部': '维修部',
-      '景区管理部': '景区部',
-      '酒店管理部': '酒店部',
-      '餐饮管理部': '餐饮部',
-    };
-    return deptMap[deptName] || deptName;
+    if (deptName.length <= 4) return deptName;
+    return deptName.slice(0, 4) + '…';
   };
 
   // 获取归属单位名称
   const getAffiliationName = (position: Position): string => {
     const company = getShortCompanyName(position.companies.name);
     const dept = position.department ? getShortDeptName(position.department) : '';
-    return dept ? `${company}${dept}` : company;
+    return dept ? `${company}·${dept}` : company;
   };
 
   // 分页导航
@@ -538,39 +510,39 @@ export default function EvaluationPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-2 sm:p-4">
+      <div className="min-h-screen bg-[#FAF8F5] p-2 sm:p-4">
         <div className="w-full mx-auto space-y-2 sm:space-y-4">
           {/* 头部骨架 */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-3 sm:p-4 animate-pulse">
+          <div className="bg-white rounded-xl shadow-sm border border-[#E8E3DD] p-3 sm:p-4 animate-pulse">
             <div className="flex items-center gap-3 mb-3">
-              <div className="h-10 w-10 bg-gray-200 dark:bg-gray-700 rounded"></div>
+              <div className="h-10 w-10 bg-[#F5F1EC] rounded-lg"></div>
               <div className="flex-1">
-                <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-32 mb-2"></div>
-                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-24"></div>
+                <div className="h-6 bg-[#F5F1EC] rounded w-32 mb-2"></div>
+                <div className="h-4 bg-[#F5F1EC] rounded w-24"></div>
               </div>
             </div>
-            <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full mb-3"></div>
+            <div className="h-2 bg-[#F5F1EC] rounded-full mb-3"></div>
             <div className="flex gap-2">
-              <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-20"></div>
-              <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-20"></div>
+              <div className="h-8 bg-[#F5F1EC] rounded-lg w-20"></div>
+              <div className="h-8 bg-[#F5F1EC] rounded-lg w-20"></div>
             </div>
           </div>
           
           {/* 表格骨架 */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
+          <div className="bg-white rounded-xl shadow-sm border border-[#E8E3DD] overflow-hidden">
             <div className="overflow-x-auto" style={{ maxHeight: 'calc(100vh - 280px)' }}>
               <table className="w-full border-collapse" style={{ minWidth: 'max-content' }}>
                 <thead className="sticky top-0 z-40">
-                  <tr className="bg-gray-50 dark:bg-gray-700">
-                    <th className="border-b border-r border-gray-200 dark:border-gray-600 px-2 py-2" style={{ width: '100px' }}>
-                      <div className="h-3 bg-gray-200 dark:bg-gray-600 rounded w-12"></div>
+                  <tr className="bg-[#F5F1EC]">
+                    <th className="border-b border-r border-[#E8E3DD] px-2 py-2" style={{ width: '100px' }}>
+                      <div className="h-3 bg-[#E8E3DD] rounded w-12"></div>
                     </th>
-                    <th className="border-b border-r border-gray-200 dark:border-gray-600 px-2 py-2" style={{ width: '70px' }}>
-                      <div className="h-3 bg-gray-200 dark:bg-gray-600 rounded w-10"></div>
+                    <th className="border-b border-r border-[#E8E3DD] px-2 py-2" style={{ width: '70px' }}>
+                      <div className="h-3 bg-[#E8E3DD] rounded w-10"></div>
                     </th>
                     {Array.from({ length: 14 }).map((_, i) => (
-                      <th key={i} className="border-b border-gray-200 dark:border-gray-600 px-1 py-2">
-                        <div className="h-6 bg-gray-200 dark:bg-gray-600 rounded w-12 mx-auto"></div>
+                      <th key={i} className="border-b border-[#E8E3DD] px-1 py-2">
+                        <div className="h-6 bg-[#E8E3DD] rounded w-12 mx-auto"></div>
                       </th>
                     ))}
                   </tr>
@@ -594,10 +566,10 @@ export default function EvaluationPage() {
   const unfilledItem = getFirstUnfilledItemInCurrentPage();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-2">
+    <div className="min-h-screen bg-[#FAF8F5] p-2">
       {/* 自动保存提示 Toast */}
       {showAutoSaveToast && (
-        <div className="fixed bottom-4 right-4 z-50 bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 animate-in slide-in-from-bottom-2 duration-300">
+        <div className="fixed bottom-4 right-4 z-50 bg-[#C8956C] text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 animate-in slide-in-from-bottom-2 duration-300">
           {isAutoSaving ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -614,19 +586,19 @@ export default function EvaluationPage() {
       
       <div className="w-full mx-auto space-y-1.5">
         {/* 头部 - 紧凑布局 */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-2 sm:p-3">
+        <div className="bg-white rounded-xl shadow-sm border border-[#E8E3DD] p-2 sm:p-3">
           {/* 第一行：返回按钮 + 标题 */}
           <div className="flex items-center gap-2 mb-1.5">
-            <Button variant="ghost" size="icon" onClick={() => router.push('/')} className="shrink-0 h-8 w-8">
+            <Button variant="ghost" size="icon" onClick={() => router.push('/')} className="shrink-0 h-8 w-8 text-[#6B6560] hover:text-[#3D3630] hover:bg-[#F5F1EC]">
               <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5" />
             </Button>
             <div className="flex-1 min-w-0">
-              <h1 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white truncate">
+              <h1 className="text-base sm:text-lg font-bold text-[#3D3630] truncate">
                 岗位价值评估
               </h1>
-              <p className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400 flex items-center gap-1">
+              <p className="text-[10px] sm:text-xs text-[#8B8580] flex items-center gap-1">
                 <Users className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
-                <span className="truncate">{evaluatorName} • {positions.length}岗位 • {currentPage}/{totalPages}页</span>
+                <span className="truncate">{evaluatorName} · {positions.length}岗位 · {currentPage}/{totalPages}页</span>
               </p>
             </div>
           </div>
@@ -634,20 +606,20 @@ export default function EvaluationPage() {
           {/* 第二行：进度条 */}
           <div className="mb-1.5">
             <div className="flex items-center justify-between text-[10px] sm:text-xs mb-0.5">
-              <span className="text-gray-600 dark:text-gray-400">总体进度</span>
-              <span className={`font-medium ${isAllComplete ? 'text-green-600' : 'text-amber-600'}`}>
+              <span className="text-[#8B8580]">总体进度</span>
+              <span className={`font-medium ${isAllComplete ? 'text-[#5B8C5A]' : 'text-[#D4954B]'}`}>
                 {progress.completed}/{progress.total}
                 {!isAllComplete && ` (剩${progress.total - progress.completed})`}
               </span>
             </div>
-            <div className="h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+            <div className="h-1.5 bg-[#F5F1EC] rounded-full overflow-hidden">
               <div 
-                className={`h-full transition-all duration-300 ${isAllComplete ? 'bg-green-500' : 'bg-amber-500'}`}
+                className={`h-full transition-all duration-300 ${isAllComplete ? 'bg-[#5B8C5A]' : 'bg-[#C8956C]'}`}
                 style={{ width: `${(progress.completed / progress.total) * 100}%` }}
               />
             </div>
             {/* 当前页进度 */}
-            <div className="flex items-center justify-between text-[10px] text-gray-500">
+            <div className="flex items-center justify-between text-[10px] text-[#8B8580]">
               <span>当前页</span>
               <span>{currentPageProgress.completed}/{currentPageProgress.total}</span>
             </div>
@@ -658,11 +630,11 @@ export default function EvaluationPage() {
             {/* 已提交状态提示 */}
             {isSubmitted ? (
               <>
-                <div className="flex items-center gap-1.5 text-green-600 dark:text-green-400 text-xs sm:text-sm font-medium">
+                <div className="flex items-center gap-1.5 text-[#5B8C5A] text-xs sm:text-sm font-medium">
                   <Lock className="h-4 w-4" />
                   <span>已提交，不可修改</span>
                 </div>
-                <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                <div className="text-[10px] sm:text-xs text-[#8B8580] flex items-center gap-1">
                   <Info className="h-3 w-3" />
                   <span>如需修改请联系管理员</span>
                 </div>
@@ -675,7 +647,7 @@ export default function EvaluationPage() {
                     variant="outline"
                     size="sm"
                     onClick={scrollToFirstUnfilled}
-                    className="text-amber-600 border-amber-300 hover:bg-amber-50 text-[10px] sm:text-xs h-7 px-2"
+                    className="text-[#D4954B] border-[#E8E3DD] hover:bg-[#F5F1EC] text-[10px] sm:text-xs h-7 px-2"
                   >
                     <ArrowDown className="h-3 w-3 sm:mr-0.5" />
                     <span className="hidden sm:inline">跳转</span>
@@ -688,7 +660,7 @@ export default function EvaluationPage() {
                   size="sm"
                   onClick={handleSaveDraft}
                   disabled={isSavingDraft || progress.completed === 0}
-                  className="text-[10px] sm:text-xs h-7 px-2"
+                  className="text-[10px] sm:text-xs h-7 px-2 border-[#E8E3DD] text-[#6B6560] hover:bg-[#F5F1EC]"
                 >
                   {isSavingDraft ? (
                     <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current" />
@@ -702,7 +674,7 @@ export default function EvaluationPage() {
                   size="sm"
                   onClick={handleSubmitScores}
                   disabled={isSaving || !isAllComplete}
-                  className={`text-[10px] sm:text-xs h-7 px-2 ${!isAllComplete ? 'opacity-50' : ''}`}
+                  className={`text-[10px] sm:text-xs h-7 px-2 bg-[#C8956C] hover:bg-[#B07D58] text-white ${!isAllComplete ? 'opacity-50' : ''}`}
                 >
                   {isSaving ? (
                     <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white" />
@@ -720,12 +692,12 @@ export default function EvaluationPage() {
 
         {/* 已提交锁定提示 */}
         {isSubmitted && (
-          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-2 sm:p-3">
+          <div className="bg-[#F0EDE8] border border-[#E8E3DD] rounded-xl p-2 sm:p-3">
             <div className="flex items-start gap-2">
-              <Lock className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
-              <div className="text-xs sm:text-sm text-green-700 dark:text-green-300">
+              <Lock className="h-4 w-4 text-[#5B8C5A] mt-0.5 shrink-0" />
+              <div className="text-xs sm:text-sm text-[#3D3630]">
                 <p className="font-medium">您的评分已提交并锁定</p>
-                <p className="text-[10px] sm:text-xs mt-1 text-green-600 dark:text-green-400">
+                <p className="text-[10px] sm:text-xs mt-1 text-[#8B8580]">
                   评分数据已保存，如需修改请联系管理员进行解锁操作。
                 </p>
               </div>
@@ -735,24 +707,24 @@ export default function EvaluationPage() {
 
         {/* 未完成提示 - 紧凑 */}
         {!isSubmitted && !isAllComplete && unfilledItem && (
-          <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-1.5 sm:p-2 flex items-center gap-1.5">
-            <AlertCircle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
-            <span className="text-[10px] sm:text-xs text-amber-700 dark:text-amber-300">
+          <div className="bg-[#F5F1EC] border border-[#E8E3DD] rounded-xl p-1.5 sm:p-2 flex items-center gap-1.5">
+            <AlertCircle className="h-3.5 w-3.5 text-[#D4954B] shrink-0" />
+            <span className="text-[10px] sm:text-xs text-[#6B6560]">
               请完成 <strong>{unfilledItem.positionName}</strong> 的 <strong>{unfilledItem.dimensionName}</strong> 等 {progress.total - progress.completed} 项
             </span>
           </div>
         )}
 
         {/* 评分矩阵 - 移动端优化 */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
+        <div className="bg-white rounded-xl shadow-sm border border-[#E8E3DD] overflow-hidden">
           <div className="overflow-x-auto overflow-y-auto -webkit-overflow-scrolling-touch" style={{ maxHeight: 'calc(100vh - 200px)' }}>
             <table className="w-full border-collapse" style={{ minWidth: 'max-content' }}>
               <thead className="sticky top-0 z-40">
-                <tr className="bg-gray-50 dark:bg-gray-700">
-                  <th className="border-b-2 border-r-2 border-gray-300 dark:border-gray-500 px-2 py-2.5 text-left text-sm font-bold text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-700" style={{ position: 'sticky', left: 0, zIndex: 50, width: '110px', minWidth: '110px' }}>
+                <tr className="bg-[#F5F1EC]">
+                  <th className="border-b-2 border-r-2 border-[#E8E3DD] px-2 py-2.5 text-left text-sm font-bold text-[#3D3630] bg-[#F5F1EC]" style={{ position: 'sticky', left: 0, zIndex: 50, width: '110px', minWidth: '110px' }}>
                     归属单位
                   </th>
-                  <th className="border-b-2 border-r-2 border-gray-300 dark:border-gray-500 px-2 py-2.5 text-left text-sm font-bold text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-700" style={{ position: 'sticky', left: '110px', zIndex: 50, width: '80px', minWidth: '80px' }}>
+                  <th className="border-b-2 border-r-2 border-[#E8E3DD] px-2 py-2.5 text-left text-sm font-bold text-[#3D3630] bg-[#F5F1EC]" style={{ position: 'sticky', left: '110px', zIndex: 50, width: '80px', minWidth: '80px' }}>
                     岗位名称
                   </th>
                   {evaluationStandards.factors.map((factor) => (
@@ -760,15 +732,15 @@ export default function EvaluationPage() {
                       {factor.dimensions.map((dimension) => (
                         <th 
                           key={dimension.id} 
-                          className="border-b-2 border-r border-gray-300 dark:border-gray-500 px-1 py-2 text-center"
+                          className="border-b-2 border-r border-[#E8E3DD] px-1 py-2 text-center"
                           style={{ minWidth: `${dimension.maxLevel * 20 + 12}px` }}
                           title={dimension.name}
                         >
                           <div className="flex flex-col items-center gap-0.5">
-                            <div className="text-[11px] sm:text-xs text-gray-600 dark:text-gray-300 font-medium">
+                            <div className="text-[11px] sm:text-xs text-[#8B8580] font-medium">
                               {factor.name.substring(0, 2)}
                             </div>
-                            <div className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-white leading-tight whitespace-nowrap">
+                            <div className="text-xs sm:text-sm font-semibold text-[#3D3630] leading-tight whitespace-nowrap">
                               {dimension.name}
                             </div>
                           </div>
@@ -787,34 +759,34 @@ export default function EvaluationPage() {
                   return (
                     <tr 
                       key={position.id} 
-                      className={`border-b border-gray-300 dark:border-gray-500`}
+                      className="border-b border-[#E8E3DD]"
                     >
                       <td 
-                        className={`border-r-2 border-gray-300 dark:border-gray-500 px-2 py-2 ${!isPositionComplete ? 'bg-amber-50 dark:bg-amber-900/30' : 'bg-white dark:bg-gray-800'}`}
+                        className={`border-r-2 border-[#E8E3DD] px-2 py-2 ${!isPositionComplete ? 'bg-[#F5F1EC]' : 'bg-white'}`}
                         style={{ position: 'sticky', left: 0, zIndex: 25, width: '110px', minWidth: '110px' }}
                         title={position.companies.name + (position.department ? '-' + position.department : '')}
                       >
-                        <div className="text-xs sm:text-sm text-gray-700 dark:text-gray-200 leading-tight whitespace-nowrap overflow-hidden text-ellipsis font-medium">
+                        <div className="text-xs sm:text-sm text-[#6B6560] leading-tight whitespace-nowrap overflow-hidden text-ellipsis font-medium">
                           {getAffiliationName(position)}
                         </div>
                       </td>
                       <td 
-                        className={`border-r-2 border-gray-300 dark:border-gray-500 px-2 py-2 ${!isPositionComplete ? 'bg-amber-50 dark:bg-amber-900/30' : 'bg-white dark:bg-gray-800'}`}
+                        className={`border-r-2 border-[#E8E3DD] px-2 py-2 ${!isPositionComplete ? 'bg-[#F5F1EC]' : 'bg-white'}`}
                         style={{ position: 'sticky', left: '110px', zIndex: 25, width: '80px', minWidth: '80px' }}
                         title={position.name}
                       >
                         <div className="flex flex-col gap-0.5">
-                          <div className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-white leading-tight whitespace-nowrap overflow-hidden text-ellipsis">
+                          <div className="text-xs sm:text-sm font-semibold text-[#3D3630] leading-tight whitespace-nowrap overflow-hidden text-ellipsis">
                             {position.name}
                           </div>
-                          <div className="flex items-center gap-0.5 text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
-                            <span className={isPositionComplete ? 'text-green-600 dark:text-green-400 font-medium' : ''}>
+                          <div className="flex items-center gap-0.5 text-[10px] sm:text-xs text-[#8B8580]">
+                            <span className={isPositionComplete ? 'text-[#5B8C5A] font-medium' : ''}>
                               {completedCount}/{totalDimensions}
                             </span>
                             {isPositionComplete ? (
-                              <CheckCircle className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-green-500" />
+                              <CheckCircle className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-[#5B8C5A]" />
                             ) : (
-                              <AlertCircle className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-amber-500" />
+                              <AlertCircle className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-[#D4954B]" />
                             )}
                           </div>
                         </div>
@@ -828,13 +800,13 @@ export default function EvaluationPage() {
                           <td 
                             key={dimension.id} 
                             ref={isFirstUnfilled ? firstUnfilledRef : null}
-                            className={`border-r border-gray-300 dark:border-gray-500 px-0.5 py-2 transition-colors ${
+                            className={`border-r border-[#E8E3DD] px-0.5 py-2 transition-colors ${
                               unfilled && !isSubmitted
-                                ? 'bg-red-50 dark:bg-red-900/20' 
-                                : 'bg-green-50/30 dark:bg-green-900/10'
+                                ? 'bg-[#F5F1EC]' 
+                                : 'bg-[#FAF8F5]'
                             } ${
                               isFirstUnfilled 
-                                ? 'ring-2 ring-red-400 ring-inset' 
+                                ? 'ring-2 ring-[#D4954B] ring-inset' 
                                 : ''
                             } ${
                               isSubmitted ? 'opacity-70' : ''
@@ -856,7 +828,7 @@ export default function EvaluationPage() {
                                       value={level.toString()}
                                       id={`${position.id}-${dimension.id}-${level}`}
                                       disabled={isSubmitted}
-                                      className={`h-4 w-4 sm:h-4.5 sm:w-4.5 ${unfilled ? 'border-red-300 dark:border-red-700' : ''} ${isSubmitted ? 'cursor-not-allowed' : ''}`}
+                                      className={`h-4 w-4 sm:h-4.5 sm:w-4.5 ${unfilled ? 'border-[#D4CDC5]' : ''} ${isSubmitted ? 'cursor-not-allowed' : ''}`}
                                     />
                                   </div>
                                 ))}
@@ -875,14 +847,14 @@ export default function EvaluationPage() {
 
         {/* 分页控件 - 紧凑 */}
         {totalPages > 1 && (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-1.5 sm:p-2">
+          <div className="bg-white rounded-xl shadow-sm border border-[#E8E3DD] p-1.5 sm:p-2">
             <div className="flex items-center justify-between">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => goToPage(currentPage - 1)}
                 disabled={currentPage === 1}
-                className="text-[10px] sm:text-xs h-7 px-2"
+                className="text-[10px] sm:text-xs h-7 px-2 border-[#E8E3DD] text-[#6B6560] hover:bg-[#F5F1EC]"
               >
                 <ChevronLeft className="h-3 w-3" />
                 <span className="hidden sm:inline">上页</span>
@@ -907,13 +879,17 @@ export default function EvaluationPage() {
                       variant={currentPage === pageNum ? "default" : "outline"}
                       size="sm"
                       onClick={() => goToPage(pageNum)}
-                      className="h-6 w-6 sm:h-7 sm:w-7 p-0 text-[10px] sm:text-xs"
+                      className={`h-6 w-6 sm:h-7 sm:w-7 p-0 text-[10px] sm:text-xs ${
+                        currentPage === pageNum 
+                          ? 'bg-[#3D3630] text-white hover:bg-[#2C2825]' 
+                          : 'border-[#E8E3DD] text-[#6B6560] hover:bg-[#F5F1EC]'
+                      }`}
                     >
                       {pageNum}
                     </Button>
                   );
                 })}
-                {totalPages > 5 && <span className="px-0.5 text-gray-400 text-xs">...</span>}
+                {totalPages > 5 && <span className="px-0.5 text-[#D4CDC5] text-xs">...</span>}
               </div>
               
               <Button
@@ -921,7 +897,7 @@ export default function EvaluationPage() {
                 size="sm"
                 onClick={() => goToPage(currentPage + 1)}
                 disabled={currentPage === totalPages}
-                className="text-[10px] sm:text-xs h-7 px-2"
+                className="text-[10px] sm:text-xs h-7 px-2 border-[#E8E3DD] text-[#6B6560] hover:bg-[#F5F1EC]"
               >
                 <span className="hidden sm:inline">下页</span>
                 <ChevronRight className="h-3 w-3" />
@@ -931,15 +907,15 @@ export default function EvaluationPage() {
         )}
 
         {/* 底部提示 - 紧凑 */}
-        <div className="text-center text-[10px] sm:text-xs text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 rounded-lg shadow-sm p-1.5 sm:p-2 flex items-center justify-center gap-2 flex-wrap">
-          <span>💡 左右滑动查看更多维度 • 红色背景为未填项 • 完成后点击"提交"</span>
+        <div className="text-center text-[10px] sm:text-xs text-[#8B8580] bg-white rounded-xl shadow-sm border border-[#E8E3DD] p-1.5 sm:p-2 flex items-center justify-center gap-2 flex-wrap">
+          <span>左右滑动查看更多维度 · 暖色背景为未填项 · 完成后点击"提交"</span>
           {Object.keys(unsavedScores).length > 0 && (
-            <span className="text-amber-600 dark:text-amber-400 font-medium">
-              • {Object.keys(unsavedScores).length} 个岗位待保存
+            <span className="text-[#D4954B] font-medium">
+              · {Object.keys(unsavedScores).length} 个岗位待保存
             </span>
           )}
-          <span className="text-blue-500 dark:text-blue-400">
-            • 自动保存已启用 (30秒)
+          <span className="text-[#C8956C]">
+            · 自动保存已启用 (30秒)
           </span>
         </div>
       </div>

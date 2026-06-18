@@ -39,6 +39,19 @@ export default function LandingPage() {
     if (!evaluatorName.trim()) return;
     setIsStarting(true);
     localStorage.setItem('evaluator_name', evaluatorName.trim());
+
+    // 记录使用日志
+    fetch('/api/usage-logs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        visitor_name: evaluatorName.trim(),
+        action: '开始评估',
+        page: '/',
+        detail: `评估人: ${evaluatorName.trim()}`,
+      }),
+    }).catch(() => {});
+
     router.push('/evaluation');
   };
 
@@ -448,15 +461,11 @@ export default function LandingPage() {
             {/* 右侧开发者信息 */}
             <div className="flex flex-col items-center gap-2 md:items-end">
               <div className="flex items-center gap-2">
-                <span className="font-mono text-xs font-semibold tracking-wider text-[#C8956C]">
-                  HHW
-                </span>
-                <span className="h-3 w-px bg-[#E8E3DD]" />
                 <span className="text-xs font-medium text-[#6B6560]">黄宏伟</span>
+                <span className="h-3 w-px bg-[#E8E3DD]" />
+                <span className="text-xs text-[#8B8580]">和君咨询 · 咨询顾问</span>
               </div>
               <div className="flex items-center gap-3 text-xs text-[#8B8580]">
-                <span>和君咨询 · 咨询顾问</span>
-                <span className="h-3 w-px bg-[#E8E3DD]" />
                 <span className="font-mono text-[#C8956C]">HHWSDQC</span>
                 <span className="text-[#D4CDC5]">（微信）</span>
               </div>
@@ -465,7 +474,7 @@ export default function LandingPage() {
 
           <div className="mt-8 border-t border-[#F0EDE8] pt-6 text-center">
             <p className="text-xs text-[#D4CDC5]">
-              &copy; {new Date().getFullYear()} HHW 岗位价值评估 · 由和君咨询顾问黄宏伟设计开发
+              本网页为作者开源，如需商用请告知 · 由黄宏伟设计开发
             </p>
           </div>
         </div>

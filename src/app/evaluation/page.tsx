@@ -97,6 +97,25 @@ export default function EvaluationPage() {
     loadEvaluationInfo();
   }, []);
 
+  // 记录使用日志
+  const logUsage = async (action: string, detail?: string) => {
+    try {
+      const name = localStorage.getItem('evaluator_name');
+      await fetch('/api/usage-logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          visitor_name: name,
+          action,
+          page: '/evaluation',
+          detail,
+        }),
+      });
+    } catch {
+      // 静默失败，不影响主流程
+    }
+  };
+
   const loadEvaluationInfo = async () => {
     const storedEvaluatorName = localStorage.getItem('evaluator_name');
 
@@ -105,6 +124,9 @@ export default function EvaluationPage() {
       router.push('/');
       return;
     }
+
+    // 记录进入评分页面
+    logUsage('进入评分', `评估人: ${storedEvaluatorName}`);
 
     setEvaluatorName(storedEvaluatorName);
     
@@ -397,6 +419,9 @@ export default function EvaluationPage() {
       setIsSubmitted(true);
       // 清空未保存数据
       setUnsavedScores({});
+
+      // 记录提交日志
+      logUsage('提交评分', `评估人: ${evaluatorName}, 岗位数: ${scores.length}`);
       
       alert('评分提交成功！您的评分已锁定，如需修改请联系管理员。');
     } catch (error) {

@@ -41,6 +41,18 @@ import {
 import * as XLSX from 'xlsx';
 import { LogoIcon } from '@/components/logo';
 
+const AUTH_KEY = 'admin_authenticated';
+
+interface UsageLog {
+  id: string;
+  visitor_name: string | null;
+  action: string;
+  page: string | null;
+  detail: string | null;
+  ip_address: string | null;
+  created_at: string;
+}
+
 interface RankingItem {
   positionId: string;
   positionName: string;
@@ -152,6 +164,15 @@ function formatOperationType(type: string): string {
   return operationTypeNames[type] || type;
 }
 
+function getUsageActionColor(action: string): { bg: string; text: string } {
+  if (action.includes('进入') || action.includes('访问')) return { bg: '#F0F7F0', text: '#5B8C5A' };
+  if (action.includes('评分') || action.includes('提交')) return { bg: '#FFF8F0', text: '#D4954B' };
+  if (action.includes('导入') || action.includes('上传')) return { bg: '#F0F0FF', text: '#5B6C8C' };
+  if (action.includes('导出') || action.includes('下载')) return { bg: '#F5F0FF', text: '#7B5B8C' };
+  if (action.includes('管理') || action.includes('后台')) return { bg: '#FFF0F0', text: '#C84C4C' };
+  return { bg: '#F5F2EE', text: '#8B8580' };
+}
+
 export default function AdminPage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -171,6 +192,9 @@ export default function AdminPage() {
   const [selectedEvaluator, setSelectedEvaluator] = useState('');
   const [unlocking, setUnlocking] = useState(false);
   const [isOperating, setIsOperating] = useState(false);
+  const [usageLogs, setUsageLogs] = useState<UsageLog[]>([]);
+  const [isLoadingLogs, setIsLoadingLogs] = useState(false);
+  const [isAuthChecked, setIsAuthChecked] = useState(false);
 
   // Import states
   const [isPreviewing, setIsPreviewing] = useState(false);
@@ -181,10 +205,11 @@ export default function AdminPage() {
   const loadData = useCallback(async () => {
     try {
       setIsLoading(true);
-      const [rankingsRes, unlockRes, logsRes] = await Promise.all([
+      const [rankingsRes, unlockRes, logsRes, usageLogsRes] = await Promise.all([
         fetch('/api/rankings'),
         fetch('/api/admin/unlock'),
         fetch('/api/admin/operation-logs'),
+        fetch('/api/usage-logs?limit=200'),
       ]);
 
       if (rankingsRes.ok) {
@@ -208,6 +233,11 @@ export default function AdminPage() {
         const data = await logsRes.json();
         setOperationLogs(data.logs || []);
       }
+
+      if (usageLogsRes.ok) {
+        const data = await usageLogsRes.json();
+        setUsageLogs(data.data || []);
+      }
     } catch (error) {
       console.error('加载数据失败:', error);
     } finally {
@@ -215,9 +245,21 @@ export default function AdminPage() {
     }
   }, []);
 
+  // 密码验证检查
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    const authed = sessionStorage.getItem(AUTH_KEY);
+    if (authed !== 'true') {
+      router.replace('/admin-login');
+    } else {
+      setIsAuthChecked(true);
+    }
+  }, [router]);
+
+  useEffect(() => {
+    if (isAuthChecked) {
+      loadData();
+    }
+  }, [loadData, isAuthChecked]);
 
   const togglePositionExpand = async (positionId: string) => {
     const updated = positionDetails.map((p) => {
@@ -537,7 +579,7 @@ export default function AdminPage() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-xs text-[#D4CDC5] hidden sm:inline">HHW · 黄宏伟</span>
+            <span className="text-xs text-[#D4CDC5] hidden sm:inline">黄宏伟</span>
             <Button
               variant="ghost"
               size="sm"
@@ -617,6 +659,7 @@ export default function AdminPage() {
               { value: 'rankings', label: '岗位排名', icon: TrendingUp },
               { value: 'unlock', label: '评分解锁', icon: Unlock },
               { value: 'logs', label: '操作日志', icon: History },
+              { value: 'usage', label: '使用日志', icon: Users },
             ].map((tab) => (
               <TabsTrigger
                 key={tab.value}
@@ -973,6 +1016,76 @@ export default function AdminPage() {
                             </td>
                             <td className="py-3 px-4 text-sm" style={{ color: '#8B8580' }}>
                               {log.operator_name}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Usage Logs Tab */}
+          <TabsContent value="usage" className="mt-6">
+            <Card className="border-[#E8E3DD] shadow-none">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2" style={{ color: '#2C2825' }}>
+                  <Users className="h-5 w-5" style={{ color: '#C8956C' }} />
+                  使用日志
+                </CardTitle>
+                <CardDescription style={{ color: '#8B8580' }}>
+                  记录所有访客的操作行为，了解谁在使用系统、做了什么
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {usageLogs.length === 0 ? (
+                  <div className="text-center py-16">
+                    <Users className="h-12 w-12 mx-auto mb-4" style={{ color: '#E8E3DD' }} />
+                    <p style={{ color: '#8B8580' }}>暂无使用记录</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b" style={{ borderColor: '#E8E3DD' }}>
+                          <th className="text-left py-3 px-4 font-medium text-xs" style={{ color: '#8B8580' }}>时间</th>
+                          <th className="text-left py-3 px-4 font-medium text-xs" style={{ color: '#8B8580' }}>访客</th>
+                          <th className="text-left py-3 px-4 font-medium text-xs" style={{ color: '#8B8580' }}>操作</th>
+                          <th className="text-left py-3 px-4 font-medium text-xs" style={{ color: '#8B8580' }}>页面</th>
+                          <th className="text-left py-3 px-4 font-medium text-xs" style={{ color: '#8B8580' }}>详情</th>
+                          <th className="text-left py-3 px-4 font-medium text-xs" style={{ color: '#8B8580' }}>IP</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {usageLogs.map((log) => (
+                          <tr key={log.id} className="border-b last:border-0 hover:bg-[#FAF8F5] transition-colors" style={{ borderColor: '#F5F2EE' }}>
+                            <td className="py-3 px-4 text-xs whitespace-nowrap" style={{ color: '#8B8580', fontFamily: "'JetBrains Mono', monospace" }}>
+                              {formatDateTime(log.created_at)}
+                            </td>
+                            <td className="py-3 px-4 text-sm font-medium" style={{ color: '#2C2825' }}>
+                              {log.visitor_name || '匿名访客'}
+                            </td>
+                            <td className="py-3 px-4">
+                              <span
+                                className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
+                                style={{
+                                  backgroundColor: getUsageActionColor(log.action).bg,
+                                  color: getUsageActionColor(log.action).text,
+                                }}
+                              >
+                                {log.action}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 text-xs" style={{ color: '#8B8580' }}>
+                              {log.page || '-'}
+                            </td>
+                            <td className="py-3 px-4 text-xs max-w-[200px] truncate" style={{ color: '#8B8580' }}>
+                              {log.detail || '-'}
+                            </td>
+                            <td className="py-3 px-4 text-xs" style={{ color: '#D4CDC5', fontFamily: "'JetBrains Mono', monospace" }}>
+                              {log.ip_address || '-'}
                             </td>
                           </tr>
                         ))}

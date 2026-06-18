@@ -33,7 +33,7 @@ export default function RootLayout({
   const isDev = process.env.NODE_ENV === 'development';
 
   return (
-    <html lang="zh-CN">
+    <html lang="zh-CN" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.cn" />
         <link rel="preconnect" href="https://fonts.gstatic.cn" crossOrigin="anonymous" />

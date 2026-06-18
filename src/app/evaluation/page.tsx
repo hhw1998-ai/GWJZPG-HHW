@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { evaluationStandards, getAllDimensions } from '@/lib/evaluation-standards';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { ChevronLeft, ChevronRight, Save, Users, CheckCircle, AlertCircle, ArrowDown, Menu, X, Loader2, Lock, Info } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Save, Users, CheckCircle, AlertCircle, ArrowDown, Menu, X, Loader2, Lock, Info, HelpCircle, ChevronDown } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { LogoIcon } from '@/components/logo';
 
@@ -591,8 +591,56 @@ export default function EvaluationPage() {
   const isAllComplete = progress.completed === progress.total;
   const unfilledItem = getFirstUnfilledItemInCurrentPage();
 
+  // 评分指引组件
+  const [showGuide, setShowGuide] = useState(false);
+
   return (
     <div className="min-h-screen bg-[#FAF8F5] p-2">
+      {/* 评分指引 - 可折叠 */}
+      <div className="mb-1.5">
+        <button
+          onClick={() => setShowGuide(!showGuide)}
+          className="w-full flex items-center justify-between bg-white rounded-xl shadow-sm border border-[#E8E3DD] p-2.5 text-left hover:bg-[#FAF8F5] transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <HelpCircle className="h-4 w-4 text-[#C8956C]" />
+            <span className="text-sm font-medium text-[#3D3630]">评分指引</span>
+            <span className="text-xs text-[#8B8580]">了解六因素十四维度评估模型</span>
+          </div>
+          <ChevronDown className={`h-4 w-4 text-[#8B8580] transition-transform duration-200 ${showGuide ? 'rotate-180' : ''}`} />
+        </button>
+        {showGuide && (
+          <div className="bg-white rounded-b-xl border-x border-b border-[#E8E3DD] p-3 animate-in slide-in-from-top-2 duration-200">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+              {evaluationStandards.factors.map((factor) => (
+                <div key={factor.id} className="border border-[#F5F1EC] rounded-lg p-2.5">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <span className="text-xs font-bold text-white px-1.5 py-0.5 rounded" style={{ backgroundColor: '#C8956C' }}>
+                      {factor.weight}%
+                    </span>
+                    <span className="text-sm font-semibold text-[#3D3630]">{factor.name}</span>
+                  </div>
+                  <div className="space-y-1">
+                    {factor.dimensions.map((dim) => (
+                      <div key={dim.id} className="text-xs text-[#8B8580]">
+                        <span className="font-medium text-[#2C2825]">{dim.name}</span>
+                        <span className="mx-1">·</span>
+                        <span>{dim.maxLevel}级</span>
+                        <span className="mx-1">·</span>
+                        <span>{dim.maxScore}分</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-[#8B8580] mt-2 text-center">
+              请根据岗位实际情况，在每个维度中选择最符合的等级。全部完成后点击「提交评分」锁定结果。
+            </p>
+          </div>
+        )}
+      </div>
+      
       {/* 自动保存提示 Toast */}
       {showAutoSaveToast && (
         <div className="fixed bottom-4 right-4 z-50 bg-[#C8956C] text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 animate-in slide-in-from-bottom-2 duration-300">

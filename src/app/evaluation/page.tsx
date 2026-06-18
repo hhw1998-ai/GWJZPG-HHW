@@ -77,6 +77,7 @@ export default function EvaluationPage() {
 
   // 分页状态
   const [currentPage, setCurrentPage] = useState(1);
+  const [showGuide, setShowGuide] = useState(false);
   const pageSize = 20; // 每页20个岗位
 
   // 获取所有维度
@@ -590,9 +591,6 @@ export default function EvaluationPage() {
   const currentPageProgress = getCurrentPageProgress();
   const isAllComplete = progress.completed === progress.total;
   const unfilledItem = getFirstUnfilledItemInCurrentPage();
-
-  // 评分指引组件
-  const [showGuide, setShowGuide] = useState(false);
 
   return (
     <div className="min-h-screen bg-[#FAF8F5] p-2">

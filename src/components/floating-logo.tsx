@@ -3,24 +3,27 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 
 /**
- * 可拖拽悬浮 3D Logo
- * 右下角悬浮，鼠标可拖拽移动，自动缓慢旋转
+ * 可拖拽悬浮 3D 立方体 Logo
+ * 6 面完整封闭，每面均有文字，精致光影
  */
 export function FloatingLogo() {
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [initialized, setInitialized] = useState(false);
-  const [rotation, setRotation] = useState(0);
+  const [rotateX, setRotateX] = useState(-25);
+  const [rotateY, setRotateY] = useState(0);
   const logoRef = useRef<HTMLDivElement>(null);
   const animFrameRef = useRef<number>(0);
+
+  const SIZE = 72;
 
   // 初始化位置：右下角
   useEffect(() => {
     const updateInitialPos = () => {
       setPosition({
-        x: window.innerWidth - 80,
-        y: window.innerHeight - 80,
+        x: window.innerWidth - SIZE - 32,
+        y: window.innerHeight - SIZE - 32,
       });
       setInitialized(true);
     };
@@ -36,7 +39,8 @@ export function FloatingLogo() {
     const animate = (time: number) => {
       const delta = time - lastTime;
       lastTime = time;
-      setRotation((prev) => (prev + delta * 0.03) % 360);
+      setRotateX((prev) => (prev + delta * 0.008) % 360);
+      setRotateY((prev) => (prev + delta * 0.025) % 360);
       animFrameRef.current = requestAnimationFrame(animate);
     };
     animFrameRef.current = requestAnimationFrame(animate);
@@ -48,10 +52,7 @@ export function FloatingLogo() {
     (e: React.MouseEvent) => {
       e.preventDefault();
       setIsDragging(true);
-      setDragStart({
-        x: e.clientX - position.x,
-        y: e.clientY - position.y,
-      });
+      setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
     },
     [position]
   );
@@ -60,39 +61,31 @@ export function FloatingLogo() {
     (e: React.TouchEvent) => {
       const touch = e.touches[0];
       setIsDragging(true);
-      setDragStart({
-        x: touch.clientX - position.x,
-        y: touch.clientY - position.y,
-      });
+      setDragStart({ x: touch.clientX - position.x, y: touch.clientY - position.y });
     },
     [position]
   );
 
   useEffect(() => {
     if (!isDragging) return;
-
     const handleMove = (e: MouseEvent) => {
       setPosition({
-        x: Math.max(0, Math.min(window.innerWidth - 64, e.clientX - dragStart.x)),
-        y: Math.max(0, Math.min(window.innerHeight - 64, e.clientY - dragStart.y)),
+        x: Math.max(0, Math.min(window.innerWidth - SIZE, e.clientX - dragStart.x)),
+        y: Math.max(0, Math.min(window.innerHeight - SIZE, e.clientY - dragStart.y)),
       });
     };
-
     const handleTouchMove = (e: TouchEvent) => {
       const touch = e.touches[0];
       setPosition({
-        x: Math.max(0, Math.min(window.innerWidth - 64, touch.clientX - dragStart.x)),
-        y: Math.max(0, Math.min(window.innerHeight - 64, touch.clientY - dragStart.y)),
+        x: Math.max(0, Math.min(window.innerWidth - SIZE, touch.clientX - dragStart.x)),
+        y: Math.max(0, Math.min(window.innerHeight - SIZE, touch.clientY - dragStart.y)),
       });
     };
-
     const handleUp = () => setIsDragging(false);
-
     window.addEventListener('mousemove', handleMove);
     window.addEventListener('mouseup', handleUp);
     window.addEventListener('touchmove', handleTouchMove, { passive: true });
     window.addEventListener('touchend', handleUp);
-
     return () => {
       window.removeEventListener('mousemove', handleMove);
       window.removeEventListener('mouseup', handleUp);
@@ -103,6 +96,66 @@ export function FloatingLogo() {
 
   if (!initialized) return null;
 
+  const half = SIZE / 2;
+
+  // 面定义：面名、背景渐变、文字、文字颜色
+  const faces = [
+    {
+      name: 'front',
+      transform: `translateZ(${half}px)`,
+      bg: 'linear-gradient(160deg, #3D3630 0%, #2C2520 100%)',
+      text: '黄宏伟',
+      textColor: '#C8956C',
+      fontSize: 16,
+      fontWeight: 700,
+    },
+    {
+      name: 'back',
+      transform: `rotateY(180deg) translateZ(${half}px)`,
+      bg: 'linear-gradient(160deg, #2C2520 0%, #3D3630 100%)',
+      text: 'HHW',
+      textColor: '#C8956C',
+      fontSize: 20,
+      fontWeight: 700,
+    },
+    {
+      name: 'right',
+      transform: `rotateY(90deg) translateZ(${half}px)`,
+      bg: 'linear-gradient(160deg, #4A4038 0%, #3D3630 100%)',
+      text: '黄宏伟',
+      textColor: '#D4A87C',
+      fontSize: 15,
+      fontWeight: 600,
+    },
+    {
+      name: 'left',
+      transform: `rotateY(-90deg) translateZ(${half}px)`,
+      bg: 'linear-gradient(160deg, #3D3630 0%, #4A4038 100%)',
+      text: 'HHW',
+      textColor: '#D4A87C',
+      fontSize: 18,
+      fontWeight: 600,
+    },
+    {
+      name: 'top',
+      transform: `rotateX(90deg) translateZ(${half}px)`,
+      bg: 'linear-gradient(160deg, #C8956C 0%, #A67B52 100%)',
+      text: 'HHW',
+      textColor: '#FFFFFF',
+      fontSize: 18,
+      fontWeight: 700,
+    },
+    {
+      name: 'bottom',
+      transform: `rotateX(-90deg) translateZ(${half}px)`,
+      bg: 'linear-gradient(160deg, #8B7B6A 0%, #6B5D50 100%)',
+      text: '黄宏伟',
+      textColor: 'rgba(255,255,255,0.6)',
+      fontSize: 14,
+      fontWeight: 500,
+    },
+  ];
+
   return (
     <div
       ref={logoRef}
@@ -110,103 +163,90 @@ export function FloatingLogo() {
       style={{
         left: position.x,
         top: position.y,
-        width: 64,
-        height: 64,
+        width: SIZE,
+        height: SIZE,
         cursor: isDragging ? 'grabbing' : 'grab',
-        transition: isDragging ? 'none' : 'left 0.3s ease-out, top 0.3s ease-out',
       }}
       onMouseDown={handleMouseDown}
       onTouchStart={handleTouchStart}
     >
-      {/* 投影 */}
+      {/* 环境光晕 */}
       <div
-        className="absolute -bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-[#3D3630]/15 blur-md"
+        className="absolute rounded-full blur-2xl"
         style={{
-          width: 48,
-          height: 8,
-          opacity: isDragging ? 0.3 : 0.5,
-          transition: 'opacity 0.3s',
+          width: SIZE + 40,
+          height: SIZE + 40,
+          left: -20,
+          top: -20,
+          background: 'radial-gradient(circle, rgba(200,149,108,0.12) 0%, transparent 70%)',
+          opacity: isDragging ? 0.6 : 0.35,
+          transition: 'opacity 0.4s',
         }}
       />
 
-      {/* 3D 立方体 */}
+      {/* 底部投影 */}
+      <div
+        className="absolute left-1/2 -translate-x-1/2 rounded-full blur-md"
+        style={{
+          width: SIZE - 12,
+          height: 10,
+          bottom: -14,
+          background: 'rgba(61,54,48,0.2)',
+          opacity: isDragging ? 0.25 : 0.45,
+          transition: 'opacity 0.4s',
+        }}
+      />
+
+      {/* 3D 场景 */}
       <div
         className="relative h-full w-full"
-        style={{
-          perspective: '200px',
-        }}
+        style={{ perspective: '300px' }}
       >
         <div
           className="relative h-full w-full"
           style={{
             transformStyle: 'preserve-3d',
-            transform: `rotateX(-25deg) rotateY(${rotation}deg)`,
-            transition: isDragging ? 'none' : 'transform 0.1s linear',
+            transform: `rotateX(${rotateX}deg) rotateY(${rotateY}deg)`,
           }}
         >
-          {/* 顶面 - 琥珀金 */}
-          <div
-            className="absolute inset-0"
-            style={{
-              width: 56,
-              height: 56,
-              background: 'linear-gradient(135deg, #C8956C 0%, #A67B52 100%)',
-              transform: 'rotateX(90deg) translateZ(28px)',
-              borderRadius: 8,
-            }}
-          />
-          {/* 前面 - 深胡桃棕 */}
-          <div
-            className="absolute inset-0 flex items-center justify-center"
-            style={{
-              width: 56,
-              height: 56,
-              background: 'linear-gradient(135deg, #3D3630 0%, #2C2825 100%)',
-              transform: 'translateZ(28px)',
-              borderRadius: 8,
-              boxShadow: '0 4px 20px rgba(61,54,48,0.35)',
-            }}
-          >
-            <span
-              className="font-mono font-bold text-white select-none"
-              style={{ fontSize: 22, letterSpacing: '-0.5px' }}
+          {faces.map((face) => (
+            <div
+              key={face.name}
+              className="absolute inset-0 flex items-center justify-center"
+              style={{
+                width: SIZE,
+                height: SIZE,
+                background: face.bg,
+                transform: face.transform,
+                borderRadius: 10,
+                border: '1px solid rgba(200,149,108,0.15)',
+                boxShadow: 'inset 0 0 30px rgba(0,0,0,0.15)',
+                backfaceVisibility: 'hidden',
+              }}
             >
-              HHW
-            </span>
-          </div>
-          {/* 右面 */}
-          <div
-            className="absolute inset-0"
-            style={{
-              width: 56,
-              height: 56,
-              background: 'linear-gradient(135deg, #4A423A 0%, #3D3630 100%)',
-              transform: 'rotateY(90deg) translateZ(28px)',
-              borderRadius: 8,
-            }}
-          />
-          {/* 底面 */}
-          <div
-            className="absolute inset-0"
-            style={{
-              width: 56,
-              height: 56,
-              background: 'linear-gradient(135deg, #8B7B6A 0%, #6B5D50 100%)',
-              transform: 'rotateX(-90deg) translateZ(28px)',
-              borderRadius: 8,
-            }}
-          />
-          {/* 左面 */}
-          <div
-            className="absolute inset-0"
-            style={{
-              width: 56,
-              height: 56,
-              background: 'linear-gradient(135deg, #5A5046 0%, #4A423A 100%)',
-              transform: 'rotateY(-90deg) translateZ(28px)',
-              borderRadius: 8,
-            }}
-          />
+              {/* 面内光泽 */}
+              <div
+                className="absolute inset-0 rounded-[10px]"
+                style={{
+                  background:
+                    'linear-gradient(135deg, rgba(255,255,255,0.04) 0%, transparent 50%, rgba(0,0,0,0.06) 100%)',
+                }}
+              />
+              {/* 文字 */}
+              <span
+                className="relative select-none tracking-wider"
+                style={{
+                  color: face.textColor,
+                  fontSize: face.fontSize,
+                  fontWeight: face.fontWeight,
+                  fontFamily: "'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif",
+                  textShadow: '0 1px 3px rgba(0,0,0,0.3)',
+                }}
+              >
+                {face.text}
+              </span>
+            </div>
+          ))}
         </div>
       </div>
     </div>

@@ -3,16 +3,16 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Logo } from '@/components/logo';
-import { Lock, ArrowRight, AlertCircle } from 'lucide-react';
+import { Lock, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
 
-const ADMIN_PASSWORD = '199821';
-const AUTH_KEY = 'admin_authenticated';
+const AUTH_KEY = 'hhw_admin_authed';
 
 export default function AdminLoginPage() {
   const router = useRouter();
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isChecking, setIsChecking] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   // 检查是否已登录
   useEffect(() => {
@@ -24,24 +24,45 @@ export default function AdminLoginPage() {
     }
   }, [router]);
 
-  const handleLogin = () => {
-    if (password === ADMIN_PASSWORD) {
-      sessionStorage.setItem(AUTH_KEY, 'true');
-      // 记录后台登录日志
-      fetch('/api/usage-logs', {
+  const handleLogin = async () => {
+    if (!password) return;
+    setIsLoading(true);
+    setError('');
+
+    try {
+      const res = await fetch('/api/admin/verify-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          visitor_name: '管理员',
-          action: '登录后台',
-          page: '/admin-login',
-          detail: '管理员通过密码验证进入后台',
-        }),
-      }).catch(() => {});
-      router.replace('/admin');
-    } else {
-      setError('密码错误，请重试');
-      setPassword('');
+        body: JSON.stringify({ password }),
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        sessionStorage.setItem(AUTH_KEY, 'true');
+        if (data.token) {
+          sessionStorage.setItem('hhw_admin_token', data.token);
+        }
+        // 记录后台登录日志
+        fetch('/api/usage-logs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            visitor_name: '管理员',
+            action: '登录后台',
+            page: '/admin-login',
+            detail: '管理员通过密码验证进入后台',
+          }),
+        }).catch(() => {});
+        router.replace('/admin');
+      } else {
+        setError(data.message || '密码错误，请重试');
+        setPassword('');
+      }
+    } catch {
+      setError('网络错误，请稍后重试');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -84,7 +105,8 @@ export default function AdminLoginPage() {
                 onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
                 placeholder="请输入管理密码"
                 autoFocus
-                className="w-full rounded-xl border border-[#E8E3DD] bg-[#FAF8F5] px-4 py-3 text-[15px] text-[#2C2825] placeholder-[#D4CDC5] outline-none transition-all focus:border-[#C8956C] focus:ring-2 focus:ring-[#C8956C]/15"
+                disabled={isLoading}
+                className="w-full rounded-xl border border-[#E8E3DD] bg-[#FAF8F5] px-4 py-3 text-[15px] text-[#2C2825] placeholder-[#D4CDC5] outline-none transition-all focus:border-[#C8956C] focus:ring-2 focus:ring-[#C8956C]/15 disabled:opacity-50"
               />
             </div>
 
@@ -97,11 +119,17 @@ export default function AdminLoginPage() {
 
             <button
               onClick={handleLogin}
-              disabled={!password}
+              disabled={!password || isLoading}
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#3D3630] py-3 text-sm font-semibold text-white transition-all hover:bg-[#2C2825] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
             >
-              进入后台
-              <ArrowRight className="h-4 w-4" />
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <>
+                  进入后台
+                  <ArrowRight className="h-4 w-4" />
+                </>
+              )}
             </button>
           </div>
         </div>

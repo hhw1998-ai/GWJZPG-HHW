@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 
-// API响应接口
 interface ImportResponse {
   success: boolean;
   message: string;
@@ -11,14 +10,12 @@ interface ImportResponse {
   errors?: ImportError[];
 }
 
-// 导入错误
 interface ImportError {
   companyName: string;
   positionName: string;
   error: string;
 }
 
-// 岗位数据接口
 interface PositionData {
   companyName: string;
   department: string;
@@ -85,43 +82,48 @@ export async function POST(request: NextRequest) {
         companyId = company.id;
       }
 
-      // 批量检查和创建岗位
-      for (const position of companyPositions) {
-        // 检查岗位是否已存在
-        const { data: existingPosition } = await client
-          .from('positions')
-          .select('id')
-          .eq('company_id', companyId)
-          .eq('name', position.positionName)
-          .single();
+      // 优化：批量查询已存在的岗位（单次 DB 调用替代 N 次逐条查询）
+      const positionNames = companyPositions.map(p => p.positionName);
+      const { data: existingPositions } = await client
+        .from('positions')
+        .select('id, name')
+        .eq('company_id', companyId)
+        .in('name', positionNames);
 
-        if (!existingPosition) {
-          // 创建新岗位
-          const { error: insertError } = await client.from('positions').insert({
-            company_id: companyId,
-            department: position.department,
-            name: position.positionName,
-          });
+      const existingNames = new Set((existingPositions || []).map((p: any) => p.name));
 
-          if (insertError) {
-            console.error(`创建岗位失败: ${position.positionName}`, insertError);
+      // 过滤出需要新建的岗位
+      const toCreate = companyPositions.filter(p => !existingNames.has(p.positionName));
+
+      // 统计跳过的
+      skippedCount += companyPositions.length - toCreate.length;
+
+      // 批量插入新岗位
+      if (toCreate.length > 0) {
+        const insertData = toCreate.map(p => ({
+          company_id: companyId,
+          department: p.department,
+          name: p.positionName,
+        }));
+
+        const { error: insertError } = await client.from('positions').insert(insertData);
+
+        if (insertError) {
+          console.error(`批量创建岗位失败: ${companyName}`, insertError);
+          for (const pos of toCreate) {
             errors.push({
               companyName,
-              positionName: position.positionName,
+              positionName: pos.positionName,
               error: '创建岗位失败',
             });
-            skippedCount++;
-          } else {
-            importedCount++;
           }
+          skippedCount += toCreate.length;
         } else {
-          // 岗位已存在，跳过
-          skippedCount++;
+          importedCount += toCreate.length;
         }
       }
     }
 
-    // 构建响应
     const response: ImportResponse = {
       success: importedCount > 0,
       message: errors.length > 0

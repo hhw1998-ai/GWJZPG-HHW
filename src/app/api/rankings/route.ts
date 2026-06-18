@@ -1,22 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
-
-// 通用岗位职级识别（基于关键词模糊匹配，不硬编码具体公司/岗位名）
-function getPositionLevel(name: string): number {
-  // 高层管理
-  if (
-    name.includes('总经理') || name.includes('董事长') || name.includes('总裁')
-  ) return 0;
-  // 中层管理
-  if (name.includes('经理') || name.includes('部长') || name.includes('主任')) {
-    if (name.includes('副')) return 2;
-    return 1;
-  }
-  // 主管级
-  if (name.includes('主管') || name.includes('负责人')) return 3;
-  // 普通岗位
-  return 99;
-}
+import { getPositionLevel } from '@/lib/position-utils';
 
 export async function GET() {
   try {
@@ -51,7 +35,7 @@ export async function GET() {
         .range(page * pageSize, (page + 1) * pageSize - 1);
       if (!pageData || pageData.length === 0) break;
       allEvaluations = allEvaluations.concat(pageData);
-      if (pageData.length < pageSize) break; // 最后一页
+      if (pageData.length < pageSize) break;
       page++;
     }
     
@@ -96,17 +80,13 @@ export async function GET() {
       })
       .filter((item): item is NonNullable<typeof item> => item !== null);
 
-    // 按平均分从高到低排序
     rankingData.sort((a, b) => {
-      // 主要排序：按平均分从高到低
       if (b.averageScore !== a.averageScore) {
         return b.averageScore - a.averageScore;
       }
-      // 分数相同时，按公司顺序
       if (a.companyOrder !== b.companyOrder) {
         return a.companyOrder - b.companyOrder;
       }
-      // 再按部门
       return (a.department || '').localeCompare(b.department || '', 'zh-CN');
     });
 

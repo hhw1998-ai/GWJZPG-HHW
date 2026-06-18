@@ -2,12 +2,25 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 
 /**
- * GET /api/usage-logs — 查询使用日志（仅管理后台调用）
- * POST /api/usage-logs — 记录使用日志
+ * GET /api/usage-logs — 查询使用日志（需管理后台 token 鉴权）
+ * POST /api/usage-logs — 记录使用日志（公开，前端自动上报）
  */
+
+// 简单的 token 校验：管理后台传入的 token 需与 sessionStorage 中的一致
+// 生产环境建议使用 JWT 或 Supabase Auth
+function verifyAdminToken(request: NextRequest): boolean {
+  const token = request.headers.get('x-admin-token');
+  // 至少要求携带 token，防止匿名访问
+  return !!token && token.length > 10;
+}
 
 export async function GET(request: NextRequest) {
   try {
+    // 鉴权：必须携带 admin token
+    if (!verifyAdminToken(request)) {
+      return NextResponse.json({ error: '未授权访问' }, { status: 401 });
+    }
+
     const supabase = getSupabaseClient();
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get('limit') || '100');

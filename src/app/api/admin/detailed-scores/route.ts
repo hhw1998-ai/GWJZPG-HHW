@@ -1,16 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
-
-// 通用岗位职级识别
-function getPositionLevel(name: string): number {
-  if (name.includes('总经理') || name.includes('董事长') || name.includes('总裁')) return 0;
-  if (name.includes('经理') || name.includes('部长') || name.includes('主任')) {
-    if (name.includes('副')) return 2;
-    return 1;
-  }
-  if (name.includes('主管') || name.includes('负责人')) return 3;
-  return 99;
-}
+import { getPositionLevel } from '@/lib/position-utils';
 
 export async function GET(request: NextRequest) {
   try {

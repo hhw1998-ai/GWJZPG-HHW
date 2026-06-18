@@ -3,22 +3,17 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   ChevronLeft,
-  ChevronDown,
-  ChevronUp,
   Upload,
   RefreshCw,
   Trash2,
   AlertTriangle,
   Download,
-  Lock,
   Unlock,
-  User,
   History,
   CheckCircle,
   AlertCircle,
@@ -26,165 +21,38 @@ import {
   BarChart3,
   Users,
   TrendingUp,
-  Award,
-  Shield,
-  Settings,
-  Database,
   FileSpreadsheet,
   LogOut,
-  LayoutDashboard,
-  ListOrdered,
-  KeyRound,
-  Clock,
-  ArrowLeft,
 } from 'lucide-react';
-import * as XLSX from 'xlsx';
 import { LogoIcon } from '@/components/logo';
+import { DashboardTab } from '@/components/admin/dashboard-tab';
+import { RankingsTab } from '@/components/admin/rankings-tab';
+import { UnlockTab } from '@/components/admin/unlock-tab';
+import { LogsTab } from '@/components/admin/logs-tab';
+import { UsageTab } from '@/components/admin/usage-tab';
+import type {
+  RankingItem,
+  PositionDetail,
+  SubmittedEvaluator,
+  OperationLog,
+  UsageLog,
+  PreviewResult,
+  ImportResult,
+} from '@/components/admin/types';
+import * as XLSX from 'xlsx';
 
-const AUTH_KEY = 'admin_authenticated';
-
-interface UsageLog {
-  id: string;
-  visitor_name: string | null;
-  action: string;
-  page: string | null;
-  detail: string | null;
-  ip_address: string | null;
-  created_at: string;
-}
-
-interface RankingItem {
-  positionId: string;
-  positionName: string;
-  companyName: string;
-  department: string;
-  averageScore: number;
-  evaluationCount: number;
-  evaluators: string[];
-}
-
-interface PositionDetail extends RankingItem {
-  expanded?: boolean;
-  detailedScores: DetailedScore[];
-}
-
-interface DetailedScore {
-  id: string;
-  evaluatorName: string;
-  scores: Record<string, number>;
-  totalScore: number;
-}
-
-interface SubmittedEvaluator {
-  name: string;
-  count: number;
-}
-
-interface OperationLog {
-  id: string;
-  evaluator_name: string;
-  operation_type: string;
-  position_name: string | null;
-  operator_name: string;
-  created_at: string;
-}
-
-interface PreviewResult {
-  success: boolean;
-  message: string;
-  totalPositions: number;
-  validPositions: number;
-  invalidPositions: number;
-  positions: Array<{
-    companyName: string;
-    department: string;
-    positionName: string;
-  }>;
-  detectedCompanies: string[];
-  errors: Array<{
-    rowIndex: number;
-    companyName: string;
-    errorType: string;
-    message: string;
-  }>;
-  canImport: boolean;
-}
-
-interface ImportResult {
-  success: boolean;
-  message: string;
-  importedCount: number;
-  skippedCount: number;
-  errorCount: number;
-  errors?: Array<{
-    rowIndex: number;
-    companyName: string;
-    errorType: string;
-    message: string;
-  }>;
-}
-
-const dimensionNames: Record<string, string> = {
-  impact_range: '影响范围',
-  impact_level: '影响程度',
-  problem_complexity: '问题复杂性',
-  problem_solving: '问题解决',
-  leadership_range: '领导范围',
-  leadership_style: '领导方式',
-  internal_communication: '内部沟通',
-  external_communication: '外部沟通',
-  knowledge_scope: '知识范围',
-  knowledge_level: '知识水平',
-  environment_comfort: '环境舒适度',
-  work_balance: '工作均衡性',
-  work_time: '工作时间',
-  replaceability: '可替代性',
-};
-
-const operationTypeNames: Record<string, string> = {
-  unlock_all: '全部解锁',
-  unlock_position: '解锁岗位',
-  clear_scores: '清空评分',
-  full_reset: '完全重置',
-  import_data: '导入数据',
-};
-
-function formatDateTime(dateStr: string): string {
-  const d = new Date(dateStr);
-  return d.toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
-function formatOperationType(type: string): string {
-  return operationTypeNames[type] || type;
-}
-
-function getUsageActionColor(action: string): { bg: string; text: string } {
-  if (action.includes('进入') || action.includes('访问')) return { bg: '#F0F7F0', text: '#5B8C5A' };
-  if (action.includes('评分') || action.includes('提交')) return { bg: '#FFF8F0', text: '#D4954B' };
-  if (action.includes('导入') || action.includes('上传')) return { bg: '#F0F0FF', text: '#5B6C8C' };
-  if (action.includes('导出') || action.includes('下载')) return { bg: '#F5F0FF', text: '#7B5B8C' };
-  if (action.includes('管理') || action.includes('后台')) return { bg: '#FFF0F0', text: '#C84C4C' };
-  return { bg: '#F5F2EE', text: '#8B8580' };
-}
+const AUTH_KEY = 'hhw_admin_authed';
 
 export default function AdminPage() {
   const router = useRouter();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
+  const [isAuthChecked, setIsAuthChecked] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [rankings, setRankings] = useState<RankingItem[]>([]);
   const [positionDetails, setPositionDetails] = useState<PositionDetail[]>([]);
   const [submittedEvaluators, setSubmittedEvaluators] = useState<SubmittedEvaluator[]>([]);
   const [operationLogs, setOperationLogs] = useState<OperationLog[]>([]);
-
-  // Dialog states
+  const [usageLogs, setUsageLogs] = useState<UsageLog[]>([]);
   const [showUnlockDialog, setShowUnlockDialog] = useState(false);
   const [showClearDialog, setShowClearDialog] = useState(false);
   const [showResetDialog, setShowResetDialog] = useState(false);
@@ -192,11 +60,7 @@ export default function AdminPage() {
   const [selectedEvaluator, setSelectedEvaluator] = useState('');
   const [unlocking, setUnlocking] = useState(false);
   const [isOperating, setIsOperating] = useState(false);
-  const [usageLogs, setUsageLogs] = useState<UsageLog[]>([]);
-  const [isLoadingLogs, setIsLoadingLogs] = useState(false);
-  const [isAuthChecked, setIsAuthChecked] = useState(false);
-
-  // Import states
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [isPreviewing, setIsPreviewing] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
   const [previewResult, setPreviewResult] = useState<PreviewResult | null>(null);
@@ -209,7 +73,9 @@ export default function AdminPage() {
         fetch('/api/rankings'),
         fetch('/api/admin/unlock'),
         fetch('/api/admin/operation-logs'),
-        fetch('/api/usage-logs?limit=200'),
+        fetch('/api/usage-logs?limit=200', {
+          headers: { 'x-admin-token': sessionStorage.getItem('hhw_admin_token') || '' },
+        }),
       ]);
 
       if (rankingsRes.ok) {
@@ -470,27 +336,11 @@ export default function AdminPage() {
         });
 
         exportData.push({
-          '排名': '',
-          '公司': '',
-          '部门': '',
-          '岗位': '',
-          '评估人': '',
-          '影响范围': '',
-          '影响程度': '',
-          '问题复杂性': '',
-          '问题解决': '',
-          '领导范围': '',
-          '领导方式': '',
-          '内部沟通': '',
-          '外部沟通': '',
-          '知识范围': '',
-          '知识水平': '',
-          '环境舒适度': '',
-          '工作均衡性': '',
-          '工作时间': '',
-          '可替代性': '',
-          '总分': '',
-          '备注': '',
+          '排名': '', '公司': '', '部门': '', '岗位': '', '评估人': '',
+          '影响范围': '', '影响程度': '', '问题复杂性': '', '问题解决': '',
+          '领导范围': '', '领导方式': '', '内部沟通': '', '外部沟通': '',
+          '知识范围': '', '知识水平': '', '环境舒适度': '', '工作均衡性': '',
+          '工作时间': '', '可替代性': '', '总分': '', '备注': '',
         });
       }
 
@@ -532,6 +382,28 @@ export default function AdminPage() {
     }
   };
 
+  // Helpers
+  const formatDateTime = (dateStr: string) => {
+    const d = new Date(dateStr);
+    return d.toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+  };
+
+  const formatOperationType = (type: string) => {
+    if (type.includes('unlock')) return '解锁';
+    if (type.includes('modify')) return '修改';
+    return type;
+  };
+
+  const getUsageActionColor = (action: string) => {
+    const map: Record<string, { bg: string; text: string }> = {
+      '开始评估': { bg: '#F0F7F0', text: '#5B8C5A' },
+      '进入评分': { bg: '#F5F2EE', text: '#3D3630' },
+      '提交评分': { bg: '#FFF8F0', text: '#D4954B' },
+      '后台登录': { bg: '#FDF5ED', text: '#C8956C' },
+    };
+    return map[action] || { bg: '#F5F2EE', text: '#8B8580' };
+  };
+
   // Compute dashboard stats
   const totalPositions = rankings.length;
   const evaluatedPositions = rankings.filter((r) => r.evaluationCount > 0).length;
@@ -567,7 +439,7 @@ export default function AdminPage() {
               onClick={() => router.push('/')}
               className="hover:bg-[#F5F2EE]"
             >
-              <ArrowLeft className="h-5 w-5" style={{ color: '#3D3630' }} />
+              <ChevronLeft className="h-5 w-5" style={{ color: '#3D3630' }} />
             </Button>
             <div className="flex items-center gap-3">
               <LogoIcon size={28} />
@@ -672,429 +544,56 @@ export default function AdminPage() {
             ))}
           </TabsList>
 
-          {/* Dashboard Tab */}
-          <TabsContent value="dashboard" className="mt-6 space-y-6">
-            {/* Stats Grid */}
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <Card className="border-[#E8E3DD] shadow-none">
-                <CardHeader className="pb-2">
-                  <CardDescription className="text-xs" style={{ color: '#8B8580' }}>岗位总数</CardDescription>
-                  <CardTitle className="text-2xl" style={{ color: '#2C2825', fontFamily: "'JetBrains Mono', monospace" }}>
-                    {totalPositions}
-                  </CardTitle>
-                </CardHeader>
-              </Card>
-              <Card className="border-[#E8E3DD] shadow-none">
-                <CardHeader className="pb-2">
-                  <CardDescription className="text-xs" style={{ color: '#8B8580' }}>已评估岗位</CardDescription>
-                  <CardTitle className="text-2xl" style={{ color: '#2C2825', fontFamily: "'JetBrains Mono', monospace" }}>
-                    {evaluatedPositions}
-                    <span className="text-sm font-normal ml-1" style={{ color: '#8B8580' }}>/ {evaluationRate}%</span>
-                  </CardTitle>
-                </CardHeader>
-              </Card>
-              <Card className="border-[#E8E3DD] shadow-none">
-                <CardHeader className="pb-2">
-                  <CardDescription className="text-xs" style={{ color: '#8B8580' }}>评估人数</CardDescription>
-                  <CardTitle className="text-2xl" style={{ color: '#2C2825', fontFamily: "'JetBrains Mono', monospace" }}>
-                    {totalEvaluators}
-                  </CardTitle>
-                </CardHeader>
-              </Card>
-              <Card className="border-[#E8E3DD] shadow-none">
-                <CardHeader className="pb-2">
-                  <CardDescription className="text-xs" style={{ color: '#8B8580' }}>平均得分</CardDescription>
-                  <CardTitle className="text-2xl" style={{ color: '#2C2825', fontFamily: "'JetBrains Mono', monospace" }}>
-                    {avgScore}
-                  </CardTitle>
-                </CardHeader>
-              </Card>
-            </div>
-
-            {/* Score Range */}
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Card className="border-[#E8E3DD] shadow-none">
-                <CardHeader className="pb-3">
-                  <CardDescription className="text-xs" style={{ color: '#8B8580' }}>得分分布</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {rankings.length === 0 ? (
-                    <p className="text-sm text-center py-8" style={{ color: '#8B8580' }}>暂无数据</p>
-                  ) : (
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between text-sm">
-                        <span style={{ color: '#8B8580' }}>最高分</span>
-                        <span className="font-semibold" style={{ color: '#5B8C5A', fontFamily: "'JetBrains Mono', monospace" }}>{topScore}</span>
-                      </div>
-                      <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: '#F5F2EE' }}>
-                        <div className="h-full rounded-full transition-all" style={{ width: `${Math.min((topScore / 1000) * 100, 100)}%`, backgroundColor: '#C8956C' }} />
-                      </div>
-                      <div className="flex items-center justify-between text-sm">
-                        <span style={{ color: '#8B8580' }}>最低分</span>
-                        <span className="font-semibold" style={{ color: '#D4954B', fontFamily: "'JetBrains Mono', monospace" }}>{bottomScore}</span>
-                      </div>
-                      <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: '#F5F2EE' }}>
-                        <div className="h-full rounded-full transition-all" style={{ width: `${Math.min((bottomScore / 1000) * 100, 100)}%`, backgroundColor: '#E8D5C4' }} />
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card className="border-[#E8E3DD] shadow-none">
-                <CardHeader className="pb-3">
-                  <CardDescription className="text-xs" style={{ color: '#8B8580' }}>快速操作</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start border-[#E8E3DD] text-[#3D3630] hover:bg-[#F5F2EE]"
-                    onClick={() => setShowImportDialog(true)}
-                  >
-                    <FileSpreadsheet className="h-4 w-4 mr-2" />
-                    导入 Excel 岗位数据
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start border-[#E8E3DD] text-[#3D3630] hover:bg-[#F5F2EE]"
-                    onClick={handleExportExcel}
-                    disabled={rankings.length === 0}
-                  >
-                    <Download className="h-4 w-4 mr-2" />
-                    导出评估结果
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start border-[#E8E3DD] text-[#3D3630] hover:bg-[#F5F2EE]"
-                    onClick={() => setActiveTab('unlock')}
-                  >
-                    <Unlock className="h-4 w-4 mr-2" />
-                    管理评分解锁
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Recent Activity */}
-            <Card className="border-[#E8E3DD] shadow-none">
-              <CardHeader className="pb-3">
-                <CardDescription className="text-xs" style={{ color: '#8B8580' }}>最近操作</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {operationLogs.length === 0 ? (
-                  <p className="text-sm text-center py-6" style={{ color: '#8B8580' }}>暂无操作记录</p>
-                ) : (
-                  <div className="space-y-2">
-                    {operationLogs.slice(0, 5).map((log) => (
-                      <div key={log.id} className="flex items-center gap-3 text-sm py-2 border-b last:border-0" style={{ borderColor: '#F5F2EE' }}>
-                        <span className="text-xs" style={{ color: '#8B8580', fontFamily: "'JetBrains Mono', monospace" }}>
-                          {formatDateTime(log.created_at)}
-                        </span>
-                        <span className="px-1.5 py-0.5 rounded text-xs font-medium" style={{
-                          backgroundColor: log.operation_type.includes('unlock') ? '#FFF8F0' : '#F0F7F0',
-                          color: log.operation_type.includes('unlock') ? '#D4954B' : '#5B8C5A',
-                        }}>
-                          {formatOperationType(log.operation_type)}
-                        </span>
-                        <span style={{ color: '#2C2825' }}>{log.evaluator_name}</span>
-                        {log.position_name && (
-                          <span style={{ color: '#8B8580' }}>- {log.position_name}</span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+          <TabsContent value="dashboard" className="mt-6">
+            <DashboardTab
+              totalPositions={totalPositions}
+              evaluatedPositions={evaluatedPositions}
+              evaluationRate={evaluationRate}
+              totalEvaluators={totalEvaluators}
+              avgScore={avgScore}
+              topScore={topScore}
+              bottomScore={bottomScore}
+              rankings={rankings}
+              operationLogs={operationLogs}
+              onImportClick={() => setShowImportDialog(true)}
+              onExportClick={handleExportExcel}
+              onUnlockTabClick={() => setActiveTab('unlock')}
+              formatDateTime={formatDateTime}
+              formatOperationType={formatOperationType}
+            />
           </TabsContent>
 
-          {/* Rankings Tab */}
           <TabsContent value="rankings" className="mt-6">
-            <Card className="border-[#E8E3DD] shadow-none">
-              <CardHeader>
-                <CardTitle style={{ color: '#2C2825' }}>岗位价值排名</CardTitle>
-                <CardDescription style={{ color: '#8B8580' }}>
-                  按平均得分从高到低排序，点击岗位行可查看每位评估人的详细评分
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {rankings.length === 0 ? (
-                  <div className="text-center py-16">
-                    <BarChart3 className="h-12 w-12 mx-auto mb-4" style={{ color: '#E8E3DD' }} />
-                    <p style={{ color: '#8B8580' }}>暂无数据，请先在评分页面完成评分</p>
-                  </div>
-                ) : (
-                  <div className="space-y-1.5">
-                    {positionDetails.map((position, index) => (
-                      <div key={position.positionId} className="border rounded-lg overflow-hidden" style={{ borderColor: '#E8E3DD' }}>
-                        <div
-                          className="flex items-center px-4 py-3 cursor-pointer hover:bg-[#FAF8F5] transition-colors"
-                          onClick={() => togglePositionExpand(position.positionId)}
-                        >
-                          <div className="w-12 flex-shrink-0">
-                            <span
-                              className="inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-semibold"
-                              style={{
-                                backgroundColor: index === 0 ? '#C8956C' : index === 1 ? '#B8A99A' : index === 2 ? '#D4A574' : '#F5F2EE',
-                                color: index < 3 ? '#FFFFFF' : '#8B8580',
-                              }}
-                            >
-                              {index + 1}
-                            </span>
-                          </div>
-                          <div className="w-36 flex-shrink-0 truncate text-sm font-medium" style={{ color: '#2C2825' }}>{position.companyName}</div>
-                          <div className="w-20 flex-shrink-0 truncate text-sm" style={{ color: '#8B8580' }}>{position.department}</div>
-                          <div className="flex-1 text-sm font-medium" style={{ color: '#2C2825' }}>{position.positionName}</div>
-                          <div className="w-20 text-right font-semibold text-base" style={{ color: '#3D3630', fontFamily: "'JetBrains Mono', monospace" }}>{position.averageScore}</div>
-                          <div className="w-16 text-right text-xs" style={{ color: '#8B8580' }}>{position.evaluationCount}人</div>
-                          <div className="w-28 text-right text-xs truncate" style={{ color: '#8B8580' }}>{position.evaluators.join(', ')}</div>
-                          <div className="w-8 flex justify-center">
-                            {position.evaluationCount > 0 && (
-                              position.expanded
-                                ? <ChevronUp className="h-4 w-4" style={{ color: '#8B8580' }} />
-                                : <ChevronDown className="h-4 w-4" style={{ color: '#8B8580' }} />
-                            )}
-                          </div>
-                        </div>
-
-                        {position.expanded && position.detailedScores.length > 0 && (
-                          <div className="border-t px-4 py-3" style={{ backgroundColor: '#FAF8F5', borderColor: '#E8E3DD' }}>
-                            <div className="overflow-x-auto">
-                              <table className="w-full text-sm">
-                                <thead>
-                                  <tr style={{ borderColor: '#E8E3DD' }} className="border-b">
-                                    <th className="text-left py-2 px-3 font-medium text-xs" style={{ color: '#8B8580' }}>评估人</th>
-                                    {Object.entries(dimensionNames).map(([key, name]) => (
-                                      <th key={key} className="text-center py-2 px-1.5 font-medium text-xs whitespace-nowrap" style={{ color: '#8B8580' }}>{name}</th>
-                                    ))}
-                                    <th className="text-center py-2 px-3 font-medium text-xs" style={{ color: '#8B8580' }}>总分</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {position.detailedScores.map((score, sIndex) => (
-                                    <tr key={score.id || sIndex} className="border-b last:border-0" style={{ borderColor: '#F5F2EE' }}>
-                                      <td className="py-2 px-3 font-medium text-xs" style={{ color: '#2C2825' }}>{score.evaluatorName}</td>
-                                      {Object.keys(dimensionNames).map((key) => (
-                                        <td key={key} className="text-center py-2 px-1.5">
-                                          <span
-                                            className="inline-flex items-center justify-center w-6 h-6 rounded text-xs font-medium"
-                                            style={{
-                                              backgroundColor: score.scores[key] >= 4 ? '#F0F7F0' : score.scores[key] >= 3 ? '#F5F2EE' : score.scores[key] >= 2 ? '#FFF8F0' : '#FFF0F0',
-                                              color: score.scores[key] >= 4 ? '#5B8C5A' : score.scores[key] >= 3 ? '#3D3630' : score.scores[key] >= 2 ? '#D4954B' : '#CC5555',
-                                            }}
-                                          >
-                                            {score.scores[key]}
-                                          </span>
-                                        </td>
-                                      ))}
-                                      <td className="text-center py-2 px-3 font-semibold text-xs" style={{ color: '#C8956C', fontFamily: "'JetBrains Mono', monospace" }}>{score.totalScore}</td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <RankingsTab
+              positionDetails={positionDetails}
+              onToggleExpand={togglePositionExpand}
+            />
           </TabsContent>
 
-          {/* Unlock Tab */}
           <TabsContent value="unlock" className="mt-6">
-            <Card className="border-[#E8E3DD] shadow-none">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2" style={{ color: '#2C2825' }}>
-                  <Lock className="h-5 w-5" style={{ color: '#C8956C' }} />
-                  评分解锁管理
-                </CardTitle>
-                <CardDescription style={{ color: '#8B8580' }}>
-                  解锁已提交的评分，允许评估人修改数据
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {submittedEvaluators.length === 0 ? (
-                  <div className="text-center py-16">
-                    <Lock className="h-12 w-12 mx-auto mb-4" style={{ color: '#E8E3DD' }} />
-                    <p style={{ color: '#8B8580' }}>暂无已提交的评分</p>
-                  </div>
-                ) : (
-                  <>
-                    <div className="rounded-lg p-4 text-sm" style={{ backgroundColor: '#FFF8F0', border: '1px solid #F0E0D0', color: '#8B6914' }}>
-                      以下评估人已提交评分并锁定，点击「解锁」按钮可允许其修改评分数据
-                    </div>
-                    <div className="grid gap-3">
-                      {submittedEvaluators.map((evaluator) => (
-                        <div
-                          key={evaluator.name}
-                          className="flex items-center justify-between p-4 border rounded-lg"
-                          style={{ borderColor: '#E8E3DD', backgroundColor: '#FFFFFF' }}
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-full flex items-center justify-center" style={{ backgroundColor: '#F0F7F0' }}>
-                              <User className="h-4 w-4" style={{ color: '#5B8C5A' }} />
-                            </div>
-                            <div>
-                              <div className="font-medium text-sm" style={{ color: '#2C2825' }}>{evaluator.name}</div>
-                              <div className="text-xs" style={{ color: '#8B8580' }}>已提交 {evaluator.count} 个岗位评分</div>
-                            </div>
-                          </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="border-[#E8D5C4] text-[#D4954B] hover:bg-[#FFF8F0]"
-                            onClick={() => {
-                              setSelectedEvaluator(evaluator.name);
-                              setShowUnlockDialog(true);
-                            }}
-                          >
-                            <Unlock className="h-3.5 w-3.5 mr-1.5" />
-                            解锁
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
+            <UnlockTab
+              submittedEvaluators={submittedEvaluators}
+              onUnlockClick={(name) => {
+                setSelectedEvaluator(name);
+                setShowUnlockDialog(true);
+              }}
+            />
           </TabsContent>
 
-          {/* Logs Tab */}
           <TabsContent value="logs" className="mt-6">
-            <Card className="border-[#E8E3DD] shadow-none">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2" style={{ color: '#2C2825' }}>
-                  <History className="h-5 w-5" style={{ color: '#C8956C' }} />
-                  操作日志
-                </CardTitle>
-                <CardDescription style={{ color: '#8B8580' }}>
-                  记录所有解锁和修改操作，用于审计追溯
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {operationLogs.length === 0 ? (
-                  <div className="text-center py-16">
-                    <History className="h-12 w-12 mx-auto mb-4" style={{ color: '#E8E3DD' }} />
-                    <p style={{ color: '#8B8580' }}>暂无操作记录</p>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b" style={{ borderColor: '#E8E3DD' }}>
-                          <th className="text-left py-3 px-4 font-medium text-xs" style={{ color: '#8B8580' }}>时间</th>
-                          <th className="text-left py-3 px-4 font-medium text-xs" style={{ color: '#8B8580' }}>评估人</th>
-                          <th className="text-left py-3 px-4 font-medium text-xs" style={{ color: '#8B8580' }}>操作类型</th>
-                          <th className="text-left py-3 px-4 font-medium text-xs" style={{ color: '#8B8580' }}>岗位</th>
-                          <th className="text-left py-3 px-4 font-medium text-xs" style={{ color: '#8B8580' }}>操作人</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {operationLogs.map((log) => (
-                          <tr key={log.id} className="border-b last:border-0 hover:bg-[#FAF8F5] transition-colors" style={{ borderColor: '#F5F2EE' }}>
-                            <td className="py-3 px-4 text-xs" style={{ color: '#8B8580', fontFamily: "'JetBrains Mono', monospace" }}>
-                              {formatDateTime(log.created_at)}
-                            </td>
-                            <td className="py-3 px-4 text-sm font-medium" style={{ color: '#2C2825' }}>{log.evaluator_name}</td>
-                            <td className="py-3 px-4">
-                              <span
-                                className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
-                                style={{
-                                  backgroundColor: log.operation_type.includes('unlock') ? '#FFF8F0' : '#F0F7F0',
-                                  color: log.operation_type.includes('unlock') ? '#D4954B' : '#5B8C5A',
-                                }}
-                              >
-                                {formatOperationType(log.operation_type)}
-                              </span>
-                            </td>
-                            <td className="py-3 px-4 text-sm" style={{ color: '#8B8580' }}>
-                              {log.position_name || '-'}
-                            </td>
-                            <td className="py-3 px-4 text-sm" style={{ color: '#8B8580' }}>
-                              {log.operator_name}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <LogsTab
+              operationLogs={operationLogs}
+              formatDateTime={formatDateTime}
+              formatOperationType={formatOperationType}
+            />
           </TabsContent>
 
-          {/* Usage Logs Tab */}
           <TabsContent value="usage" className="mt-6">
-            <Card className="border-[#E8E3DD] shadow-none">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2" style={{ color: '#2C2825' }}>
-                  <Users className="h-5 w-5" style={{ color: '#C8956C' }} />
-                  使用日志
-                </CardTitle>
-                <CardDescription style={{ color: '#8B8580' }}>
-                  记录所有访客的操作行为，了解谁在使用系统、做了什么
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {usageLogs.length === 0 ? (
-                  <div className="text-center py-16">
-                    <Users className="h-12 w-12 mx-auto mb-4" style={{ color: '#E8E3DD' }} />
-                    <p style={{ color: '#8B8580' }}>暂无使用记录</p>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b" style={{ borderColor: '#E8E3DD' }}>
-                          <th className="text-left py-3 px-4 font-medium text-xs" style={{ color: '#8B8580' }}>时间</th>
-                          <th className="text-left py-3 px-4 font-medium text-xs" style={{ color: '#8B8580' }}>访客</th>
-                          <th className="text-left py-3 px-4 font-medium text-xs" style={{ color: '#8B8580' }}>操作</th>
-                          <th className="text-left py-3 px-4 font-medium text-xs" style={{ color: '#8B8580' }}>页面</th>
-                          <th className="text-left py-3 px-4 font-medium text-xs" style={{ color: '#8B8580' }}>详情</th>
-                          <th className="text-left py-3 px-4 font-medium text-xs" style={{ color: '#8B8580' }}>IP</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {usageLogs.map((log) => (
-                          <tr key={log.id} className="border-b last:border-0 hover:bg-[#FAF8F5] transition-colors" style={{ borderColor: '#F5F2EE' }}>
-                            <td className="py-3 px-4 text-xs whitespace-nowrap" style={{ color: '#8B8580', fontFamily: "'JetBrains Mono', monospace" }}>
-                              {formatDateTime(log.created_at)}
-                            </td>
-                            <td className="py-3 px-4 text-sm font-medium" style={{ color: '#2C2825' }}>
-                              {log.visitor_name || '匿名访客'}
-                            </td>
-                            <td className="py-3 px-4">
-                              <span
-                                className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
-                                style={{
-                                  backgroundColor: getUsageActionColor(log.action).bg,
-                                  color: getUsageActionColor(log.action).text,
-                                }}
-                              >
-                                {log.action}
-                              </span>
-                            </td>
-                            <td className="py-3 px-4 text-xs" style={{ color: '#8B8580' }}>
-                              {log.page || '-'}
-                            </td>
-                            <td className="py-3 px-4 text-xs max-w-[200px] truncate" style={{ color: '#8B8580' }}>
-                              {log.detail || '-'}
-                            </td>
-                            <td className="py-3 px-4 text-xs" style={{ color: '#D4CDC5', fontFamily: "'JetBrains Mono', monospace" }}>
-                              {log.ip_address || '-'}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <UsageTab
+              usageLogs={usageLogs}
+              formatDateTime={formatDateTime}
+              getUsageActionColor={getUsageActionColor}
+            />
           </TabsContent>
         </Tabs>
       </div>
@@ -1398,27 +897,26 @@ export default function AdminPage() {
                         下载错误报告
                       </Button>
                     </div>
-                    <ScrollArea className="h-32">
+                    <ScrollArea className="h-40">
                       <div className="p-2 space-y-1">
-                        {previewResult.errors.map((error, index) => (
-                          <div key={index} className="text-xs p-2 rounded border" style={{ borderColor: '#F5F2EE' }}>
-                            <div className="flex items-start gap-2">
-                              <span style={{ color: '#CC5555' }}>&#10005;</span>
-                              <div>
-                                <span className="font-medium" style={{ color: '#3D3630' }}>[{error.companyName}]</span>
-                                <span style={{ color: '#8B8580' }}> 第{error.rowIndex}行：</span>
-                                <span style={{ color: '#CC5555' }}>{error.errorType}</span>
-                                <span style={{ color: '#8B8580' }} className="ml-1">- {error.message}</span>
-                              </div>
-                            </div>
+                        {previewResult.errors.slice(0, 30).map((err, index) => (
+                          <div key={index} className="text-xs p-2 rounded border" style={{ borderColor: '#F5E0E0', backgroundColor: '#FFF5F5' }}>
+                            <span className="font-medium" style={{ color: '#CC5555' }}>第{err.rowIndex}行</span>
+                            <span className="ml-2" style={{ color: '#8B8580' }}>[{err.companyName}]</span>
+                            <span className="ml-2" style={{ color: '#CC5555' }}>{err.message}</span>
                           </div>
                         ))}
+                        {previewResult.errors.length > 30 && (
+                          <div className="text-xs text-center py-2" style={{ color: '#C0B8B0' }}>
+                            还有 {previewResult.errors.length - 30} 个错误未显示...
+                          </div>
+                        )}
                       </div>
                     </ScrollArea>
                   </div>
                 )}
 
-                {previewResult.canImport && (
+                {previewResult.success && (
                   <Button
                     className="w-full text-white"
                     style={{ backgroundColor: '#5B8C5A' }}
@@ -1432,8 +930,8 @@ export default function AdminPage() {
                       </>
                     ) : (
                       <>
-                        <CheckCircle className="h-4 w-4 mr-2" />
-                        确认导入 {previewResult.positions.length} 个岗位
+                        <FileSpreadsheet className="h-4 w-4 mr-2" />
+                        确认导入 {previewResult.validPositions} 个岗位
                       </>
                     )}
                   </Button>
@@ -1445,37 +943,24 @@ export default function AdminPage() {
             {importResult && (
               <div className="space-y-3">
                 <div className="flex items-start gap-2 p-3 rounded-lg text-sm" style={{
-                  backgroundColor: importResult.success
-                    ? importResult.errorCount > 0 ? '#FFF8F0' : '#F0F7F0'
-                    : '#FFF0F0',
-                  color: importResult.success
-                    ? importResult.errorCount > 0 ? '#8B6914' : '#3D5A3D'
-                    : '#CC5555',
+                  backgroundColor: importResult.success ? '#F0F7F0' : '#FFF0F0',
+                  color: importResult.success ? '#3D5A3D' : '#CC5555',
                 }}>
-                  {importResult.success ? (
-                    importResult.errorCount > 0 ? <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" /> : <CheckCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
-                  ) : (
-                    <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
-                  )}
+                  {importResult.success ? <CheckCircle className="h-4 w-4 flex-shrink-0 mt-0.5" /> : <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />}
                   <div className="flex-1">
                     <p className="font-medium">{importResult.message}</p>
-                    <div className="mt-1 text-xs space-x-3">
-                      <span>导入：{importResult.importedCount} 个</span>
-                      <span>跳过：{importResult.skippedCount} 行</span>
-                      {importResult.errorCount > 0 && (
-                        <span className="font-medium" style={{ color: '#CC5555' }}>错误：{importResult.errorCount} 个</span>
-                      )}
-                    </div>
+                    <p className="text-xs mt-1">
+                      创建 {importResult.created} 个岗位，跳过 {importResult.skipped} 个重复岗位
+                    </p>
                   </div>
                 </div>
 
-                {importResult.errors && importResult.errors.length > 0 && (
+                {importResult.errors.length > 0 && (
                   <div className="border rounded-lg overflow-hidden" style={{ borderColor: '#F0D0D0' }}>
                     <div className="px-3 py-2 flex items-center justify-between" style={{ backgroundColor: '#FFF0F0' }}>
-                      <div className="flex items-center gap-2 text-sm" style={{ color: '#CC5555' }}>
-                        <FileWarning className="h-4 w-4" />
-                        <span className="font-medium">发现 {importResult.errors.length} 个错误</span>
-                      </div>
+                      <span className="text-sm font-medium" style={{ color: '#CC5555' }}>
+                        导入失败 {importResult.errors.length} 条
+                      </span>
                       <Button variant="outline" size="sm" onClick={downloadImportErrorReport} className="h-7 text-xs border-[#E8E3DD]">
                         <Download className="h-3 w-3 mr-1" />
                         下载错误报告
@@ -1483,17 +968,10 @@ export default function AdminPage() {
                     </div>
                     <ScrollArea className="h-32">
                       <div className="p-2 space-y-1">
-                        {importResult.errors.map((error, index) => (
-                          <div key={index} className="text-xs p-2 rounded border" style={{ borderColor: '#F5F2EE' }}>
-                            <div className="flex items-start gap-2">
-                              <span style={{ color: '#CC5555' }}>&#10005;</span>
-                              <div>
-                                <span className="font-medium" style={{ color: '#3D3630' }}>[{error.companyName}]</span>
-                                <span style={{ color: '#8B8580' }}> 第{error.rowIndex}行：</span>
-                                <span style={{ color: '#CC5555' }}>{error.errorType}</span>
-                                <span style={{ color: '#8B8580' }} className="ml-1">- {error.message}</span>
-                              </div>
-                            </div>
+                        {importResult.errors.slice(0, 20).map((err, index) => (
+                          <div key={index} className="text-xs p-2 rounded border" style={{ borderColor: '#F5E0E0', backgroundColor: '#FFF5F5' }}>
+                            <span className="font-medium" style={{ color: '#CC5555' }}>第{err.rowIndex}行</span>
+                            <span className="ml-2" style={{ color: '#CC5555' }}>{err.message}</span>
                           </div>
                         ))}
                       </div>

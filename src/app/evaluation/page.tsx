@@ -7,6 +7,7 @@ import { evaluationStandards, getAllDimensions } from '@/lib/evaluation-standard
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ChevronLeft, ChevronRight, Save, Users, CheckCircle, AlertCircle, ArrowDown, Menu, X, Loader2, Lock, Info } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { LogoIcon } from '@/components/logo';
 
 interface Position {
   id: string;
@@ -592,6 +593,7 @@ export default function EvaluationPage() {
             <Button variant="ghost" size="icon" onClick={() => router.push('/')} className="shrink-0 h-8 w-8 text-[#6B6560] hover:text-[#3D3630] hover:bg-[#F5F1EC]">
               <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5" />
             </Button>
+            <LogoIcon size={24} />
             <div className="flex-1 min-w-0">
               <h1 className="text-base sm:text-lg font-bold text-[#3D3630] truncate">
                 岗位价值评估

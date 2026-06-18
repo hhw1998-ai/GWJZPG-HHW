@@ -4,11 +4,11 @@ import './globals.css';
 
 export const metadata: Metadata = {
   title: {
-    default: '岗位价值评估系统 - 通用型岗位价值评估工作台',
-    template: '%s | 岗位价值评估',
+    default: 'HHW 岗位价值评估 — 通用型岗位价值评估工作台',
+    template: '%s | HHW 岗位价值评估',
   },
   description:
-    '基于国际通用的六因素十四维度评估模型，为企业提供从数据导入、在线评分到排名分析的一站式岗位价值评估解决方案。',
+    '基于国际通用的六因素十四维度评估模型，为企业提供从数据导入、在线评分到排名分析的一站式岗位价值评估解决方案。由和君咨询顾问黄宏伟（HHW）开发。',
   keywords: [
     '岗位价值评估',
     '岗位评估',
@@ -17,8 +17,10 @@ export const metadata: Metadata = {
     '人力资源管理',
     '薪酬体系',
     '六因素十四维度',
+    'HHW',
+    '和君咨询',
   ],
-  authors: [{ name: '岗位价值评估团队' }],
+  authors: [{ name: '黄宏伟 (HHW) — 和君咨询' }],
   robots: {
     index: true,
     follow: true,

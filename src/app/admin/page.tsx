@@ -32,8 +32,14 @@ import {
   Database,
   FileSpreadsheet,
   LogOut,
+  LayoutDashboard,
+  ListOrdered,
+  KeyRound,
+  Clock,
+  ArrowLeft,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { LogoIcon } from '@/components/logo';
 
 interface RankingItem {
   positionId: string;
@@ -519,12 +525,10 @@ export default function AdminPage() {
               onClick={() => router.push('/')}
               className="hover:bg-[#F5F2EE]"
             >
-              <ChevronLeft className="h-5 w-5" style={{ color: '#3D3630' }} />
+              <ArrowLeft className="h-5 w-5" style={{ color: '#3D3630' }} />
             </Button>
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#3D3630' }}>
-                <Shield className="h-4 w-4 text-white" />
-              </div>
+              <LogoIcon size={28} />
               <div>
                 <h1 className="text-base font-semibold" style={{ color: '#2C2825', fontFamily: "'DM Serif Display', serif" }}>
                   评估管理后台
@@ -532,7 +536,8 @@ export default function AdminPage() {
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-[#D4CDC5] hidden sm:inline">HHW · 黄宏伟</span>
             <Button
               variant="ghost"
               size="sm"

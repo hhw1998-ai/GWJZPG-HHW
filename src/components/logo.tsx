@@ -2,7 +2,6 @@
 
 /**
  * Logo — 用于导航栏的简洁品牌标识
- * 3D 立方体已移至 FloatingLogo 组件（右下角悬浮可拖拽）
  */
 export function Logo({ size = 40 }: { size?: number }) {
   return (

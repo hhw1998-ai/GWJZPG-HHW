@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import { Inspector } from 'react-dev-inspector';
-import { FloatingLogo } from '@/components/floating-logo';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -45,7 +44,6 @@ export default function RootLayout({
       <body className="antialiased">
         {isDev && <Inspector />}
         {children}
-        <FloatingLogo />
       </body>
     </html>
   );
